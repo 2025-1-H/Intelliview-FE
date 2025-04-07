@@ -1,0 +1,81 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 45% 98%;
+    --foreground: 210 25% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 25% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 25% 12%;
+
+    --primary: 210 100% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 10% 96%;
+    --secondary-foreground: 210 25% 12%;
+
+    --muted: 210 10% 96%;
+    --muted-foreground: 210 10% 40%;
+
+    --accent: 210 100% 96%;
+    --accent-foreground: 210 100% 45%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 20% 93%;
+    --input: 210 20% 93%;
+    --ring: 210 100% 52% / 30%;
+
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
+  }
+  
+  /* Glass effect styles */
+  .glass {
+    @apply bg-white/60 backdrop-blur-lg border border-white/30 shadow-sm;
+  }
+
+  .glass-dark {
+    @apply bg-foreground/5 backdrop-blur-lg border border-foreground/10 shadow-sm;
+  }
+  
+  /* Transition page wrapper */
+  .page-transition-wrapper {
+    @apply animate-fade-in;
+  }
+  
+  /* Custom underline animation for links */
+  .link-underline {
+    @apply relative inline-block after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left;
+  }
+  
+  /* Section spacing */
+  .section {
+    @apply py-16 px-6 md:py-24 md:px-8;
+  }
+  
+  /* Card styles */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-md hover:-translate-y-1;
+  }
+  
+  /* Button animations */
+  .btn-bounce {
+    @apply transition-transform hover:translate-y-[-2px] active:translate-y-[0px];
+  }
+}
