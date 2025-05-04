@@ -15,8 +15,10 @@ import Header from "./components/ui/layout/Header";
 import Footer from "./components/ui/layout/Footer";
 import AnimatedTransition from "./components/ui/AnimatedTransition";
 
+// Create a client
 const queryClient = new QueryClient();
 
+// 레이아웃 컴포넌트 (헤더와 푸터를 포함)
 const Layout = () => {
   return (
     <div className="min-h-screen flex flex-col">
@@ -42,7 +44,7 @@ function App() {
             <Routes>
               <Route path="/" element={<LogoutPage />} />
               
-              {/* 헤더와 푸터가 있는,레이아웃을 적용할 라우트들 */}
+              {/* 헤더와 푸터가 있는 레이아웃을 적용할 라우트들 */}
               <Route element={<Layout />}>
                 <Route path="/home" element={<Index />} />
                 <Route path="/video-feedback" element={<VideoFeedback />} />

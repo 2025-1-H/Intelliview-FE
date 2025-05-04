@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -16,10 +15,11 @@ const Header: React.FC = () => {
   }, []);
 
   const navItems = [
-    { name: '실시간 면접', path: '/video-feedback' },
-    { name: '면접 캘린더', path: '/live-interview' },
-    { name: '오늘의 질문', path: '/calendar' },
-    { name: '로그아웃', path: '/daily-question' },
+    { name: '실시간 면접', path: '/live-interview' },
+    { name: '면접 캘린더', path: '/calendar' },
+    { name: '오늘의 질문', path: '/daily-question' },
+    { name: '자기소개 피드백', path: '/video-feedback' },
+    { name: '로그아웃', path: '/' }, // 이 부분을 로그아웃으로 변경하고 경로는 /로 설정
   ];
 
   return (
@@ -30,11 +30,11 @@ const Header: React.FC = () => {
     >
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link 
-          to="/" 
+          to="/home" // 로고 클릭 시 /home으로 이동
           className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2"
         >
           <span className="bg-primary text-white rounded-md px-2 py-1 text-sm">Interview</span>
-          <span>Guru</span>
+          <span>Intelliview</span>
         </Link>
         
         <nav className="hidden md:flex space-x-1">
