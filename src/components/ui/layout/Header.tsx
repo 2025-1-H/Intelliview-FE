@@ -16,10 +16,10 @@ const Header: React.FC = () => {
   }, []);
 
   const navItems = [
-    { name: '자기소개 피드백', path: '/video-feedback' },
-    { name: '실시간 면접', path: '/live-interview' },
-    { name: '면접 캘린더', path: '/calendar' },
-    { name: '오늘의 질문', path: '/daily-question' },
+    { name: '실시간 면접', path: '/video-feedback' },
+    { name: '면접 캘린더', path: '/live-interview' },
+    { name: '오늘의 질문', path: '/calendar' },
+    { name: '로그아웃', path: '/daily-question' },
   ];
 
   return (
