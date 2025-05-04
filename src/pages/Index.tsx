@@ -147,36 +147,6 @@ const Index: React.FC = () => {
           </div>
         </div>
       </section>
-      
-      {/* CTA Section */}
-      <section className="py-20 bg-primary/5">
-        <div className="container mx-auto max-w-4xl px-4">
-          <div className="glass rounded-2xl p-10 flex flex-col items-center text-center">
-            <h2 className="text-3xl font-bold tracking-tight">
-              지금 바로 면접 준비를 시작하세요
-            </h2>
-            <p className="mt-4 text-muted-foreground max-w-2xl">
-              면접 부담을 줄이고 자신감을 높이는 가장 효과적인 방법, Interview Guru와 함께하세요.
-            </p>
-            
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <Link 
-                to="/video-feedback" 
-                className="btn-bounce bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-medium shadow-sm"
-              >
-                자기소개 피드백 받기
-              </Link>
-              
-              <Link 
-                to="/daily-question" 
-                className="btn-bounce bg-secondary hover:bg-secondary/80 text-foreground px-8 py-3 rounded-lg font-medium"
-              >
-                오늘의 질문 확인하기
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

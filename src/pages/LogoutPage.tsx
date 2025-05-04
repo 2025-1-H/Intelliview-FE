@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const LogoutPage: React.FC = () => {
   const navigate = useNavigate();
@@ -44,19 +44,18 @@ const LogoutPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Logo Section - 왼쪽 상단에 위치 */}
-      <div className="p-6">
-        <Link 
-          to="/" 
-          className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2"
-        >
-          <span className="bg-primary text-white rounded-md px-2 py-1 text-sm">Interview</span>
-          <span>Intelliview</span>
-        </Link>
+      {/* Logo Section - 클릭 불가능한 일반 div로 변경 */}
+      <div className="container mx-auto px-4">
+        <div className="py-5">
+          <div className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2 pointer-events-none">
+            <span className="bg-primary text-white rounded-md px-2 py-1 text-sm">Interview</span>
+            <span>Intelliview</span>
+          </div>
+        </div>
       </div>
 
       {/* Main Content - 중앙 정렬 */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+      <div className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-md">
           {showSignup ? (
             // 회원가입 폼
