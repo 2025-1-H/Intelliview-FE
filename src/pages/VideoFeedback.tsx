@@ -1,57 +1,91 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 const VideoFeedback: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [videoURL, setVideoURL] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<null | {
-    overview: string;
-    strengths: string[];
-    improvements: string[];
-    bodylanguage: string;
-    voice: string;
-    content: string;
-    score: number;
-  }>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+  const videoRef = useRef<HTMLVideoElement>(null);
+const [feedback, setFeedback] = useState<any>(null);
 
-  const startRecording = () => {
-    setIsRecording(true);
-    // In a real implementation, we would start recording here
-    // For demo purposes, we'll simulate recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); 
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setVideoURL(url);
+        setRecordedChunks(chunks);
+        if (videoRef.current) {
+        videoRef.current.srcObject = null;  // 스트림 해제
+        videoRef.current.src = url; 
+      }
+      };
+
+
+      recorder.start();
+      setMediaStream(stream);
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      alert('카메라 접근에 실패했습니다.');
+      console.error(err);
+    }
   };
 
   const stopRecording = () => {
-    setIsRecording(false);
-    // Simulate creating a video URL
-    setVideoURL('https://example.com/demo-video.mp4');
+    mediaRecorder?.stop();
+    mediaStream?.getTracks().forEach((track) => track.stop());
+    setIsRecording(false); 
   };
 
-  const uploadVideo = () => {
-    setIsUploading(true);
-    
-    // Simulate API call to get feedback
-    setTimeout(() => {
-      setFeedback({
-        overview: "전반적으로 안정적인 자기소개를 하셨습니다. 목소리 톤과 내용은 좋았으나, 시선 처리와 바디랭귀지에서 개선할 점이 보입니다.",
-        strengths: [
-          "명확한 목소리 톤과 발음",
-          "구조적으로 잘 정리된 내용",
-          "적절한 속도로 발표"
-        ],
-        improvements: [
-          "시선 처리 - 카메라를 더 자주 응시하세요",
-          "손동작이 다소 과도함 - 더 자연스러운 제스처 사용 권장",
-          "내용에 구체적인 예시 추가 필요"
-        ],
-        bodylanguage: "다소 긴장된 모습이 보이며, 손동작이 과도한 경향이 있습니다. 어깨의 긴장을 풀고 더 자연스러운 자세를 유지하세요.",
-        voice: "목소리 톤과 속도는 적절하나, 중요 포인트에서 강조가 부족합니다. 핵심 내용을 강조하는 톤 변화를 추가하세요.",
-        content: "자기소개의 구조는 명확하나, 구체적인 경험이나 성과에 대한 언급이 부족합니다. 본인의 역량을 입증할 수 있는 구체적인 사례를 추가하세요.",
-        score: 78
-      });
-      setIsUploading(false);
-    }, 2000);
+    const resetRecording = () => {
+    setVideoURL(null);
+    setRecordedChunks([]);
+    setIsRecording(false);
+    if (videoRef.current) videoRef.current.srcObject = null;
   };
+
+  const uploadToServer = async () => { //분석요청함수
+  if (recordedChunks.length === 0) return;
+
+  setIsUploading(true);
+
+  const blob = new Blob(recordedChunks, { type: 'video/webm' });
+  const formData = new FormData();
+  formData.append('video', blob, 'recorded-video.webm');
+
+  try {
+    const response = await fetch('https://yourserver.com/analyze', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const result = await response.json();
+    setFeedback(result); 
+
+  } catch (error) {
+    console.error('업로드 실패:', error);
+    alert('분석 요청 중 오류 발생');
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   return (
     <div className="pt-24 pb-16 min-h-screen">
@@ -64,21 +98,28 @@ const VideoFeedback: React.FC = () => {
           </p>
         </div>
 
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           <div className="glass rounded-xl p-6 animate-slide-in">
             <h2 className="text-xl font-medium mb-4">녹화하기</h2>
-            
-            <div className="aspect-video bg-black/5 rounded-lg mb-4 flex items-center justify-center">
-              {videoURL ? (
-                <div className="w-full h-full bg-black/10 rounded-lg flex items-center justify-center text-muted-foreground">
-                  영상 미리보기
+          
+              <div className="aspect-video bg-black/5 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        controls={!!videoURL}
+                        className="w-full rounded-lg bg-black mb-4 aspect-video"
+                        src={videoURL || undefined}
+                      />
+
+                      {!isRecording && !videoURL && (
+                        <div className="absolute text-center text-muted-foreground text-base">
+                          녹화를 시작하려면 아래 버튼을 누르세요
+                        </div>
+                      )}
                 </div>
-              ) : (
-                <div className="text-muted-foreground">
-                  {isRecording ? "녹화 중..." : "카메라를 켜서 녹화를 시작하세요"}
-                </div>
-              )}
-            </div>
             
             <div className="flex flex-wrap gap-3">
               {!isRecording && !videoURL && (
@@ -99,23 +140,26 @@ const VideoFeedback: React.FC = () => {
                 </button>
               )}
               
-              {videoURL && !feedback && !isUploading && (
-                <>
+
+                {videoURL && !feedback && (
                   <button 
-                    onClick={() => setVideoURL(null)}
+                    onClick={resetRecording}
                     className="btn-bounce bg-secondary hover:bg-secondary/80 text-foreground px-4 py-2 rounded-lg font-medium flex-1"
                   >
                     다시 녹화
                   </button>
+                )}
+
+                {videoURL && !feedback && !isUploading && (
                   
                   <button 
-                    onClick={uploadVideo}
+                    onClick={uploadToServer}
                     className="btn-bounce bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-medium shadow-sm flex-1"
                   >
                     분석 요청
                   </button>
-                </>
-              )}
+                  )}
+
               
               {isUploading && (
                 <button 

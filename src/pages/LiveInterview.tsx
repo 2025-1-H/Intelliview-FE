@@ -1,5 +1,8 @@
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Check, Play, Mic, MicOff, ListCheck } from "lucide-react";
+import LiveInterviewSetup from "@/pages/LiveInterviewSetup"; // 경로는 실제 파일 위치에 맞게 수정
 
-import React, { useState } from 'react';
 
 // 면접 질문 목록 (실제로는 API에서 가져올 수 있음)
 const interviewQuestions = [
@@ -26,36 +29,18 @@ interface InterviewOption {
   categories: InterviewCategory[];
 }
 
-const interviewOptions: InterviewOption[] = [
-  {
-    id: 'basic',
-    name: '기본 면접',
-    description: '일반적인 면접 질문으로 구성된 짧은 면접입니다.',
-    duration: 10,
-    questions: 5,
-    categories: ['일반', '인성']
-  },
-  {
-    id: 'job',
-    name: '직무 면접',
-    description: '직무 관련 질문으로 구성된 중간 길이의 면접입니다.',
-    duration: 15,
-    questions: 7,
-    categories: ['직무', '기술', '일반']
-  },
-  {
-    id: 'full',
-    name: '종합 면접',
-    description: '모든 카테고리를 포함한 심층 면접입니다.',
-    duration: 25,
-    questions: 10,
-    categories: ['일반', '직무', '기술', '인성']
-  }
-];
+// 기본 면접 옵션 (하나만 사용)
+const defaultInterviewOption: InterviewOption = {
+  id: 'standard',
+  name: '실시간 면접',
+  description: '총 7개의 질문에 답변하며 영상을 녹화합니다',
+  duration: 15,
+  questions: 7,
+  categories: ['일반', '직무', '기술', '인성']
+};
 
 const LiveInterview: React.FC = () => {
-  const [selectedOption, setSelectedOption] = useState<InterviewOption | null>(null);
-  const [interviewState, setInterviewState] = useState<'setup' | 'ready' | 'inProgress' | 'completed'>('setup');
+  const [interviewState, setInterviewState] = useState<'setup' | 'ready' | 'inProgress' | 'completed' | 'feedbackList'>('setup');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [answers, setAnswers] = useState<{question: string, videoUrl: string}[]>([]);
@@ -66,36 +51,57 @@ const LiveInterview: React.FC = () => {
     improvements: string[];
     detailedFeedback: {question: string, feedback: string}[];
   } | null>(null);
+  
+  // 피드백 히스토리 (예시 데이터)
+  const feedbackHistory = [
+    {
+      id: 1,
+      date: '2025-05-03',
+      interviewType: '표준 면접',
+      score: 82,
+      questions: 7
+    },
+    {
+      id: 2,
+      date: '2025-05-01',
+      interviewType: '표준 면접',
+      score: 75,
+      questions: 7
+    },
+    {
+      id: 3,
+      date: '2025-04-28',
+      interviewType: '표준 면접',
+      score: 68,
+      questions: 7
+    }
+  ];
 
   const startInterview = () => {
     setInterviewState('inProgress');
     setCurrentQuestionIndex(0);
-    // In a real app, we would initialize recording setup here
   };
 
   const startRecording = () => {
     setIsRecording(true);
-    // In a real app, we would start recording here
   };
 
   const stopRecording = () => {
     setIsRecording(false);
     
     // Simulate saving answer
-    if (selectedOption) {
-      const newAnswers = [...answers];
-      newAnswers.push({
-        question: interviewQuestions[currentQuestionIndex],
-        videoUrl: 'https://example.com/video.mp4' // Placeholder
-      });
-      setAnswers(newAnswers);
-      
-      // Move to the next question or end the interview
-      if (currentQuestionIndex < selectedOption.questions - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-      } else {
-        completeInterview();
-      }
+    const newAnswers = [...answers];
+    newAnswers.push({
+      question: interviewQuestions[currentQuestionIndex],
+      videoUrl: 'https://example.com/video.mp4' // Placeholder
+    });
+    setAnswers(newAnswers);
+    
+    // Move to the next question or end the interview
+    if (currentQuestionIndex < defaultInterviewOption.questions - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      completeInterview();
     }
   };
 
@@ -142,362 +148,236 @@ const LiveInterview: React.FC = () => {
 
   const resetInterview = () => {
     setInterviewState('setup');
-    setSelectedOption(null);
     setCurrentQuestionIndex(0);
     setAnswers([]);
     setFeedback(null);
   };
 
-  return (
-    <div className="pt-24 pb-16 min-h-screen">
-      <div className="container mx-auto max-w-5xl px-4">
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-3xl font-bold tracking-tight mb-4">실시간 면접 시뮬레이션</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            실제 면접과 유사한 환경에서 AI 면접관과 실시간으로 면접을 진행하고 
-            상세한 피드백을 받아보세요.
-          </p>
+  const showFeedbackList = () => {
+    setInterviewState('feedbackList');
+  };
+
+  const renderSetupView = () => (
+    <LiveInterviewSetup onStartInterview={() => setInterviewState('ready')} />
+  );
+  // const renderSetupView = () => (
+  //   <div className="max-w-4xl mx-auto py-12">
+  //     <div className="text-center mb-10">
+  //       <h1 className="text-3xl font-bold mb-4">실시간 면접</h1>
+  //       <p className="text-muted-foreground max-w-2xl mx-auto">
+  //         실제 면접과 유사한 환경에서 AI 면접관과 실시간으로 면접을 진행하고 
+  //         상세한 피드백을 받아보세요.
+  //       </p>
+  //     </div>
+      
+  //     <div className="mb-12">
+  //       <h2 className="font-bold text-xl mb-4 text-center">
+  //         [실시간 면접은 이렇게 진행돼요 👇]
+  //       </h2>
+        
+  //       <div className="flex flex-col md:flex-row justify-center gap-6 mt-8">
+  //         <div className="flex-1 flex flex-col items-center text-center">
+  //           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold mb-3">1</div>
+  //           <p className="font-medium text-sm">면접을 시작합니다.</p>
+  //         </div>
+  //         <div className="flex-1 flex flex-col items-center text-center">
+  //           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold mb-3">2</div>
+  //           <p className="font-medium text-sm">총 7개의 질문에 답변하며 영상을 녹화합니다.</p>
+  //         </div>
+  //         <div className="flex-1 flex flex-col items-center text-center">
+  //           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold mb-3">3</div>
+  //           <p className="font-medium text-sm">면접이 끝나면 AI 리포트가 자동 생성됩니다.</p>
+  //         </div>
+  //       </div>
+  //     </div>
+
+  //     <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm mb-8">
+  //       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+  //         <div>
+  //           <h3 className="font-medium text-lg">{defaultInterviewOption.name}</h3>
+  //           <p className="text-sm text-muted-foreground mt-1 mb-3">
+  //             {defaultInterviewOption.description}
+  //           </p>
+            
+  //           <div className="flex flex-wrap gap-2 mb-4">
+  //             {defaultInterviewOption.categories.map((category) => (
+  //               <span 
+  //                 key={category} 
+  //                 className="px-2 py-1 rounded-full text-xs bg-primary/10 text-primary"
+  //               >
+  //                 {category}
+  //               </span>
+  //             ))}
+  //           </div>
+            
+  //           <div className="flex gap-4 text-sm text-muted-foreground">
+  //             <span>소요시간: {defaultInterviewOption.duration}분</span>
+  //             <span>질문 수: {defaultInterviewOption.questions}개</span>
+  //           </div>
+  //         </div>
+          
+  //         <div className="flex gap-3">
+  //           <Button
+  //             variant="outline"
+  //             onClick={showFeedbackList}
+  //             className="px-4 flex items-center gap-2"
+  //           >
+  //             <ListCheck size={16} />
+  //             <span>피드백 목록</span>
+  //           </Button>
+            
+  //           <Button
+  //             onClick={() => setInterviewState('ready')}
+  //             className="px-6"
+  //           >
+  //             면접 시작
+  //           </Button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   </div>
+  // );
+
+  const renderFeedbackListView = () => (
+    <div className="max-w-4xl mx-auto py-12">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">피드백 목록</h2>
+        <Button variant="outline" onClick={() => setInterviewState('setup')}>돌아가기</Button>
+      </div>
+      
+      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="grid grid-cols-5 bg-gray-50 p-4 border-b border-gray-100 font-medium text-sm">
+          <div>날짜</div>
+          <div>면접 유형</div>
+          <div>점수</div>
+          <div>질문 수</div>
+          <div></div>
         </div>
-
-        {interviewState === 'setup' && (
-          <div className="glass rounded-xl p-8 animate-slide-in">
-            <h2 className="text-xl font-medium mb-6">면접 유형 선택</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              {interviewOptions.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => setSelectedOption(option)}
-                  className={`text-left p-5 rounded-xl transition-all duration-200 ${
-                    selectedOption?.id === option.id 
-                      ? 'bg-primary text-white shadow-md' 
-                      : 'bg-white/70 hover:bg-white/90'
-                  }`}
-                >
-                  <h3 className="font-medium text-lg mb-2">{option.name}</h3>
-                  <p className={`text-sm mb-4 ${selectedOption?.id === option.id ? 'text-white/80' : 'text-muted-foreground'}`}>
-                    {option.description}
-                  </p>
-                  
-                  <div className="flex justify-between text-sm">
-                    <span className={selectedOption?.id === option.id ? 'text-white/90' : ''}>
-                      {option.duration}분
-                    </span>
-                    <span className={selectedOption?.id === option.id ? 'text-white/90' : ''}>
-                      {option.questions}개 질문
-                    </span>
-                  </div>
-                  
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {option.categories.map((category) => (
-                      <span 
-                        key={category} 
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          selectedOption?.id === option.id 
-                            ? 'bg-white/20 text-white' 
-                            : 'bg-primary/10 text-primary'
-                        }`}
-                      >
-                        {category}
-                      </span>
-                    ))}
-                  </div>
-                </button>
-              ))}
+        
+        {feedbackHistory.map((item) => (
+          <div key={item.id} className="grid grid-cols-5 p-4 border-b border-gray-100 text-sm hover:bg-gray-50">
+            <div>{item.date}</div>
+            <div>{item.interviewType}</div>
+            <div>
+              <span className="inline-flex items-center">
+                <span className={`mr-1 h-2 w-2 rounded-full ${
+                  item.score >= 80 ? 'bg-green-500' : 
+                  item.score >= 70 ? 'bg-yellow-500' : 'bg-red-500'
+                }`}></span>
+                {item.score}점
+              </span>
             </div>
-            
-            <div className="flex justify-center">
-              <button
-                onClick={() => selectedOption && setInterviewState('ready')}
-                disabled={!selectedOption}
-                className={`btn-bounce px-8 py-3 rounded-lg font-medium shadow-sm ${
-                  selectedOption 
-                    ? 'bg-primary hover:bg-primary/90 text-white' 
-                    : 'bg-secondary text-muted-foreground cursor-not-allowed'
-                }`}
-              >
-                면접 시작하기
-              </button>
+            <div>{item.questions}개</div>
+            <div>
+              <Button variant="ghost" size="sm">상세보기</Button>
             </div>
           </div>
-        )}
+        ))}
+      </div>
+      
+      {feedbackHistory.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>아직 면접 기록이 없습니다.</p>
+          <Button 
+            variant="outline" 
+            onClick={() => setInterviewState('setup')} 
+            className="mt-4"
+          >
+            첫 면접 시작하기
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 
-        {interviewState === 'ready' && (
-          <div className="glass rounded-xl p-8 animate-fade-in">
-            <h2 className="text-xl font-medium mb-6 text-center">면접 준비</h2>
-            
-            <div className="text-center mb-8">
-              <div className="mb-6">
-                <div className="w-20 h-20 rounded-full bg-primary/10 text-primary flex items-center justify-center text-3xl mx-auto">
-                  🎙️
-                </div>
-              </div>
-              
-              <p className="text-lg mb-2">
-                {selectedOption?.name} ({selectedOption?.duration}분)
-              </p>
-              <p className="text-muted-foreground mb-4">
-                {selectedOption?.questions}개 질문에 답변하게 됩니다.
-              </p>
-              
-              <div className="max-w-md mx-auto bg-white/60 rounded-lg p-4 mb-8">
-                <h3 className="font-medium mb-2">면접 진행 방법</h3>
-                <ul className="text-sm text-left space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-medium">1.</span>
-                    <span>질문이 화면에 표시됩니다.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-medium">2.</span>
-                    <span>'답변 시작' 버튼을 클릭하여 녹화를 시작합니다.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-medium">3.</span>
-                    <span>답변을 마친 후 '답변 완료' 버튼을 클릭합니다.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-medium">4.</span>
-                    <span>모든 질문에 답변 후 AI 분석 결과를 확인합니다.</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="flex justify-center space-x-4">
-              <button
-                onClick={() => setInterviewState('setup')}
-                className="btn-bounce bg-secondary hover:bg-secondary/80 text-foreground px-6 py-3 rounded-lg font-medium"
-              >
-                뒤로 가기
-              </button>
-              
-              <button
-                onClick={startInterview}
-                className="btn-bounce bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-medium shadow-sm"
-              >
-                면접 시작
-              </button>
-            </div>
+  const renderReadyView = () => (
+    <div className="max-w-2xl mx-auto py-12">
+      <div className="text-center mb-10 space-y-4">
+        <h2 className="text-2xl font-bold">면접 준비</h2>
+        <div className="mb-4">
+          <div className="w-20 h-20 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl mx-auto">
+            <Play size={32} />
           </div>
-        )}
-
-        {interviewState === 'inProgress' && (
-          <div className="glass rounded-xl p-8 animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-medium">진행 중인 면접</h2>
-              <div className="text-sm font-medium">
-                질문 {currentQuestionIndex + 1} / {selectedOption?.questions}
-              </div>
+        </div>
+        
+        <p className="text-lg font-medium">
+          {defaultInterviewOption.name} ({defaultInterviewOption.duration}분)
+        </p>
+        <p className="text-muted-foreground">
+          {defaultInterviewOption.questions}개 질문에 답변하게 됩니다.
+        </p>
+      </div>
+      
+      <div className="bg-white rounded-lg p-6 shadow-sm mb-10">
+        <h3 className="font-medium text-lg mb-4">면접 진행 방법</h3>
+        <ul className="space-y-4">
+          <li className="flex gap-4">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium shrink-0">1</div>
+            <div>
+              <p>질문이 화면에 표시됩니다.</p>
             </div>
-            
-            <div className="mb-8">
-              <div className="bg-white/60 rounded-xl p-6 mb-6">
-                <div className="text-sm text-muted-foreground mb-2">현재 질문:</div>
-                <div className="text-lg font-medium">
-                  {interviewQuestions[currentQuestionIndex]}
-                </div>
-              </div>
-              
-              <div className="aspect-video bg-black/5 rounded-lg mb-6 flex items-center justify-center">
-                {isRecording ? (
-                  <div className="flex flex-col items-center text-muted-foreground">
-                    <div className="w-4 h-4 rounded-full bg-red-500 animate-pulse-subtle mb-2"></div>
-                    <span>녹화 중...</span>
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground">
-                    '답변 시작' 버튼을 클릭하여 녹화를 시작하세요
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex justify-center space-x-4">
-                {!isRecording ? (
-                  <button
-                    onClick={startRecording}
-                    className="btn-bounce bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-medium shadow-sm"
-                  >
-                    답변 시작
-                  </button>
-                ) : (
-                  <button
-                    onClick={stopRecording}
-                    className="btn-bounce bg-destructive hover:bg-destructive/90 text-white px-8 py-3 rounded-lg font-medium shadow-sm"
-                  >
-                    답변 완료
-                  </button>
-                )}
-              </div>
+          </li>
+          <li className="flex gap-4">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium shrink-0">2</div>
+            <div>
+              <p>'답변 시작' 버튼을 클릭하여 녹화를 시작합니다.</p>
             </div>
-            
-            <div className="bg-white/40 rounded-lg p-4">
-              <h3 className="font-medium mb-3 text-sm">답변 팁:</h3>
-              <ul className="text-sm space-y-1.5 text-muted-foreground">
-                <li>• 구체적인 사례를 통해 역량을 증명하세요.</li>
-                <li>• 카메라를 자연스럽게 응시하세요.</li>
-                <li>• 명확하고 간결하게 답변하세요.</li>
-                <li>• STAR 기법(상황-임무-행동-결과)을 활용하세요.</li>
-              </ul>
+          </li>
+          <li className="flex gap-4">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium shrink-0">3</div>
+            <div>
+              <p>답변을 마친 후 '답변 완료' 버튼을 클릭합니다.</p>
             </div>
-          </div>
-        )}
-
-        {interviewState === 'completed' && (
-          <div className="animate-fade-in">
-            <div className="glass rounded-xl p-8 mb-8">
-              <div className="text-center mb-6">
-                <div className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium mb-4">
-                  면접 완료
-                </div>
-                <h2 className="text-2xl font-bold mb-2">면접 분석 결과</h2>
-                <p className="text-muted-foreground">
-                  AI가 분석한 면접 결과를 확인하세요.
-                </p>
-              </div>
-              
-              {feedback ? (
-                <div className="space-y-8">
-                  <div className="flex justify-center">
-                    <div className="relative w-32 h-32">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-2xl font-bold">{feedback.overallScore}</div>
-                      </div>
-                      <svg className="w-full h-full" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" r="16" fill="none" stroke="#e6e6e6" strokeWidth="2" />
-                        <circle 
-                          cx="18" cy="18" r="16" fill="none" stroke="#3b82f6" strokeWidth="2"
-                          strokeDasharray={`${(feedback.overallScore / 100) * 100} 100`}
-                          transform="rotate(-90 18 18)"
-                          style={{transition: 'all 0.5s ease'}}
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-medium mb-3">카테고리별 점수</h3>
-                      <div className="space-y-3">
-                        {feedback.categoryScores.map((item, index) => (
-                          <div key={index}>
-                            <div className="flex justify-between text-sm mb-1">
-                              <span>{item.category}</span>
-                              <span>{item.score}/100</span>
-                            </div>
-                            <div className="w-full bg-secondary rounded-full h-2">
-                              <div 
-                                className="bg-primary h-2 rounded-full"
-                                style={{width: `${item.score}%`, transition: 'all 0.5s ease'}}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="bg-green-50 rounded-lg p-4">
-                        <h3 className="font-medium text-green-700 mb-2">잘한 점</h3>
-                        <ul className="text-sm space-y-2">
-                          {feedback.strengths.map((strength, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-green-500 mt-0.5">✓</span>
-                              <span>{strength}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div className="bg-amber-50 rounded-lg p-4">
-                        <h3 className="font-medium text-amber-700 mb-2">개선할 점</h3>
-                        <ul className="text-sm space-y-2">
-                          {feedback.improvements.map((improvement, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-amber-500 mt-0.5">!</span>
-                              <span>{improvement}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-medium mb-4">질문별 피드백</h3>
-                    <div className="space-y-4">
-                      {feedback.detailedFeedback.map((item, index) => (
-                        <div key={index} className="bg-white/70 rounded-lg p-4">
-                          <div className="font-medium mb-2">{item.question}</div>
-                          <p className="text-sm text-muted-foreground">{item.feedback}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 flex justify-center">
-                    <button 
-                      onClick={resetInterview}
-                      className="btn-bounce bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-medium shadow-sm"
-                    >
-                      새로운 면접 시작하기
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-center">
-                    <div className="w-10 h-10 border-t-2 border-primary border-solid rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">면접 결과 분석 중...</p>
-                  </div>
-                </div>
-              )}
+          </li>
+          <li className="flex gap-4">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium shrink-0">4</div>
+            <div>
+              <p>모든 질문에 답변 후 AI 분석 결과를 확인합니다.</p>
             </div>
-            
-            <div className="glass rounded-xl p-8 animate-slide-up">
-              <h2 className="text-xl font-medium mb-6 text-center">면접 대비 리소스</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white/50 p-5 rounded-lg">
-                  <div className="text-primary text-xl font-medium mb-3">STAR 기법</div>
-                  <p className="text-sm mb-3">
-                    구조화된 답변을 위한 효과적인 방법입니다.
-                  </p>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li><span className="font-medium text-foreground">Situation:</span> 상황 설명</li>
-                    <li><span className="font-medium text-foreground">Task:</span> 주어진 과제</li>
-                    <li><span className="font-medium text-foreground">Action:</span> 취한 행동</li>
-                    <li><span className="font-medium text-foreground">Result:</span> 결과 및 배운 점</li>
-                  </ul>
-                </div>
-                
-                <div className="bg-white/50 p-5 rounded-lg">
-                  <div className="text-primary text-xl font-medium mb-3">자주 나오는 질문</div>
-                  <ul className="space-y-2 text-sm">
-                    <li>• 자신의 강점과 약점은?</li>
-                    <li>• 지원 동기는 무엇인가요?</li>
-                    <li>• 팀워크 경험에 대해 말씀해주세요.</li>
-                    <li>• 목표와 포부는 무엇인가요?</li>
-                    <li>• 실패 경험과 극복 방법은?</li>
-                  </ul>
-                </div>
-                
-                <div className="bg-white/50 p-5 rounded-lg">
-                  <div className="text-primary text-xl font-medium mb-3">면접 준비 팁</div>
-                  <ul className="space-y-2 text-sm">
-                    <li>• 회사와 직무에 대한 철저한 조사</li>
-                    <li>• 자신의 경험을 구체적인 사례로 준비</li>
-                    <li>• 질문에 대해 간결하고 명확한 답변 구성</li>
-                    <li>• 적절한 바디랭귀지 연습</li>
-                    <li>• 긍정적인 마인드셋 유지하기</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+          </li>
+        </ul>
+      </div>
+      
+      <div className="flex justify-center gap-4">
+        <Button
+          variant="outline"
+          onClick={() => setInterviewState('setup')}
+          className="px-6"
+        >
+          뒤로 가기
+        </Button>
+        
+        <Button
+          onClick={startInterview}
+          className="px-8"
+        >
+          면접 시작
+        </Button>
       </div>
     </div>
   );
+
+  // ... keep existing code (renderInProgressView and renderCompletedView functions)
+
+  // Render the appropriate view based on the current state
+  const renderContent = () => {
+    switch (interviewState) {
+      case 'setup':
+        return renderSetupView();
+      case 'ready':
+        return renderReadyView();
+      // case 'inProgress':
+      //   return renderInProgressView();
+      // case 'completed':
+      //   return renderCompletedView();
+      case 'feedbackList':
+        return renderFeedbackListView();
+      default:
+        return null;
+    }
+  };
+
+  return renderContent();
 };
 
 export default LiveInterview;
