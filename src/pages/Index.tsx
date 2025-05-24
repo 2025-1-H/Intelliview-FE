@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -16,6 +15,7 @@ const Index: React.FC = () => {
             </div>
             
             <h1 className="mt-6 text-4xl md:text-6xl font-bold tracking-tight animate-fade-in">
+              
               <span className="text-primary">AI</span>와 함께하는 <br /> 
               면접 실력 향상
             </h1>
@@ -45,7 +45,6 @@ const Index: React.FC = () => {
         </div>
       </section>
       
-      {/* Features Section */}
       <section className="py-20 bg-secondary/50">
         <div className="container mx-auto max-w-6xl px-4">
           <div className="text-center mb-16">

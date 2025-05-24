@@ -221,7 +221,7 @@ const renderInProgressView = () => (
   <div className="max-w-6xl mx-auto py-12 px-6 grid grid-cols-1 gap-8">
     <div className="max-w-3xl mx-auto mt-20 py-12 px-4">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">실시간 면접</h1>
+        <h1 className="text-3xl font-bold mb-7">실시간 면접</h1>
         <p className="text-muted-foreground text-sm">
           실제 면접과 유사한 환경에서 AI 면접관과 실시간으로 면접을 진행하고 상세한 피드백을 받아보세요.
         </p>
@@ -269,6 +269,8 @@ const renderInProgressView = () => (
           >
             {currentQuestionIndex === defaultInterviewOption.questions - 1 ? '면접 종료' : '다음 질문'}
           </Button>
+
+          
         </div>
       )}
     </div>
@@ -284,6 +286,25 @@ const renderInProgressView = () => (
         </Button>
       </div>
     )}
+    
+     {currentQuestionIndex === defaultInterviewOption.questions - 1 && showNextButton ? (
+      <div className="mt-10 max-w-xl mx-auto bg-green-50 border border-green-200 rounded-lg p-6 text-left shadow-sm">
+        <h3 className="text-lg font-semibold text-green-700 mb-3">🎉 수고하셨습니다!</h3>
+        <p className="text-sm text-gray-700 leading-relaxed">
+          모든 질문에 성실히 답변해주셔서 감사합니다.<br />
+          AI가 분석 중입니다. 잠시 후 피드백에서 상세 결과를 확인해보세요!
+        </p>
+      </div>
+    ) : (
+      <div className="mt-10 max-w-xl mx-auto bg-blue-50 border border-blue-200 rounded-lg p-6 text-left shadow-sm">
+        <h3 className="text-lg font-semibold text-blue-800 mb-3">💡 답변 팁</h3>
+        <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+          <li>구체적인 사례를 통해 역량을 증명하세요.</li>
+          <li>카메라를 자연스럽게 응시하세요.</li>
+          <li>명확하고 간결하게 답변하세요.</li>
+        </ul>
+      </div>
+    )}
   </div>
   </div>
 );
@@ -293,6 +314,7 @@ const navigate = useNavigate();
 
 const handleInterviewEnd = async () => {
   stopRecording(); // 녹화 중지
+
 
   setIsGeneratingFeedback(true); // 로딩 화면 전환
 
