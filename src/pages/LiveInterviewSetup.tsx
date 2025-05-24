@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useNavigate } from "react-router-dom";
+
 
 interface InterviewInfoProps {
   onStartInterview: () => void;
@@ -12,10 +14,37 @@ export default function InterviewInfo({ onStartInterview }: InterviewInfoProps) 
   const [jobType, setJobType] = useState("");
   const [company, setCompany] = useState("");
   const [preference, setPreference] = useState("");
+  const navigate = useNavigate();
+
+  const handleStart = async () => {
+  try {
+    const res = await fetch("/api/v1/interview/info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        occupation: jobType,
+        qualification: preference,
+      }),
+    });
+
+    const data = await res.json();
+    console.log("interviewId:", data.interviewId); // 인터뷰 ID 저장도 가능
+
+  } catch (err) {
+    console.error("서버 통신 실패:", err);
+    alert("⚠️ 서버 연결이 안되었지만, 테스트용 면접은 계속 진행합니다.");
+  } finally {
+    // 🔥 서버 성공/실패와 관계없이 무조건 진행
+    onStartInterview(); // setInterviewState('ready')
+  }
+};
+
+
+
 
   return (
-    <div className="max-w-xl mx-auto p-6 mt-24 space-y-6">
-      <h1 className="text-2xl font-bold text-center">실시간 면접 시작하기</h1>
+    <div className="max-w-xl mx-auto p-6  space-y-6">
+      <h1 className="text-2xl font-bold text-center mt-20">실시간 면접 시작하기</h1>
 
       <Card>
         <CardContent className="p-6 space-y-6">
@@ -71,17 +100,26 @@ export default function InterviewInfo({ onStartInterview }: InterviewInfoProps) 
             </ul>
           </div>
 
-          <div className="text-right pt-6">
-            <Button 
-              className="bg-blue-600 text-white" 
-              onClick={onStartInterview} 
-              disabled={!jobType || !company}
+          <div className="flex justify-between items-center pt-6">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/live-interview")}
+            >
+              뒤로가기
+            </Button>
+            
+            <Button
+              className="bg-blue-600 text-white"
+              onClick={handleStart} // ✅ 직접 만든 핸들러 사용
+              disabled={!jobType || !company || !preference}
             >
               면접 시작
             </Button>
           </div>
+
         </CardContent>
       </Card>
+
     </div>
   );
 }
