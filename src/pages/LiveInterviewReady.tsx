@@ -144,6 +144,7 @@ const startRecording = async () => {
 
 
 }
+
   const renderSetupView = () => (
     <LiveInterviewSetup onStartInterview={() => setInterviewState('ready')} />
   );
