@@ -8,9 +8,10 @@ import { useNavigate } from "react-router-dom";
 
 interface InterviewInfoProps {
   onStartInterview: () => void;
+  setInterviewId: React.Dispatch<React.SetStateAction<number>>;
 }
 
-export default function InterviewInfo({ onStartInterview }: InterviewInfoProps) {
+export default function InterviewInfo({ onStartInterview, setInterviewId }: InterviewInfoProps) {
   const [jobType, setJobType] = useState("");
   const [company, setCompany] = useState("");
   const [preference, setPreference] = useState("");
@@ -28,13 +29,13 @@ export default function InterviewInfo({ onStartInterview }: InterviewInfoProps) 
     });
 
     const data = await res.json();
-    console.log("interviewId:", data.interviewId); // 인터뷰 ID 저장도 가능
+    console.log("interviewId:", data); // 인터뷰 ID 저장도 가능
+    setInterviewId(data);
 
   } catch (err) {
-    console.error("서버 통신 실패:", err);
+    console.error("서버 통~신 실패:", err);
     alert("⚠️ 서버 연결이 안되었지만, 테스트용 면접은 계속 진행합니다.");
   } finally {
-    // 🔥 서버 성공/실패와 관계없이 무조건 진행
     onStartInterview(); // setInterviewState('ready')
   }
 };
