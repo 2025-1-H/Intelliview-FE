@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const VideoFeedback: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -43,8 +43,8 @@ const [feedback, setFeedback] = useState<any>(null);
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      alert('카메라 접근에 실패했습니다.');
       console.error(err);
+      alert('카메라 접근에 실패했습니다.');
     }
   };
 
@@ -61,31 +61,78 @@ const [feedback, setFeedback] = useState<any>(null);
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
-  const uploadToServer = async () => { //분석요청함수
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // reader.result === ArrayBuffer | string
+        const arrBuf = reader.result as ArrayBuffer;
+        const bytes   = new Uint8Array(arrBuf);
+        let binary    = "";
+        bytes.forEach(b => (binary += String.fromCharCode(b)));
+        const base64 = btoa(binary);
+        resolve(base64); // 필요 시 `data:video/mp4;base64,${base64}`
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(blob);
+    });
+
+  const uploadToServer = async () => {
   if (recordedChunks.length === 0) return;
 
   setIsUploading(true);
 
-  const blob = new Blob(recordedChunks, { type: 'video/webm' });
-  const formData = new FormData();
-  formData.append('video', blob, 'recorded-video.webm');
+  const blob = new Blob(recordedChunks, { type: "video/mp4" });
+  const interviewId = 11;
 
   try {
-    const response = await fetch('https://yourserver.com/analyze', {
-      method: 'POST',
-      body: formData,
+    const base64Str = await blobToBase64(blob);
+    const payload = JSON.stringify({ file: base64Str });
+
+    const response = await fetch(`/api/v1/interview/${interviewId}/report`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: payload,
     });
 
-    const result = await response.json();
-    setFeedback(result); 
+    if (!response.ok) throw new Error(`status ${response.status}`);
 
+    const result = await response.json();
+    setFeedback(result);
   } catch (error) {
-    console.error('업로드 실패:', error);
-    alert('분석 요청 중 오류 발생');
+    console.error("업로드 실패:", error);
+    alert("⚠️ 분석 요청 중 오류 발생");
   } finally {
     setIsUploading(false);
   }
 };
+
+// useEffect(() => {
+// const handleStart = async () => {
+//   try {
+//     const res = await fetch("/api/v1/interview/info", {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         occupation: jobType,
+//         qualification: preference,
+//       }),
+//     });
+
+//     const data = await res.json();
+//     console.log("interviewId:", data); // 인터뷰 ID 저장도 가능
+//     setInterviewId(data);
+
+//   } catch (err) {
+//     console.error("서버 통~신 실패:", err);
+//     alert("⚠️ 서버 연결이 안되었지만, 테스트용 면접은 계속 진행합니다.");
+//   } finally {
+//     onStartInterview(); // setInterviewState('ready')
+//   }
+// };
+// }, [])
 
   return (
     <div className="pt-24 pb-16 min-h-screen">
@@ -111,7 +158,7 @@ const [feedback, setFeedback] = useState<any>(null);
                         playsInline
                         controls={!!videoURL}
                         className="w-full rounded-lg bg-black mb-4 aspect-video"
-                        src={videoURL || undefined}
+                        src={videoURL || ""}
                       />
 
                       {!isRecording && !videoURL && (
@@ -201,7 +248,7 @@ const [feedback, setFeedback] = useState<any>(null);
                   <div className="bg-green-50 rounded-lg p-4">
                     <h3 className="font-medium text-green-700 mb-2">잘한 점</h3>
                     <ul className="text-sm space-y-2">
-                      {feedback.strengths.map((strength, i) => (
+                      {feedback?.strengths?.map?.((strength, i) => (
                         <li key={i} className="flex items-start gap-2">
                           <span className="text-green-500 mt-0.5">✓</span>
                           <span>{strength}</span>
