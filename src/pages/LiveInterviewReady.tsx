@@ -4,23 +4,6 @@ import { Check, Play, Mic, MicOff, ListCheck } from "lucide-react";
 import LiveInterviewSetup from "@/pages/LiveInterviewSetup"; // 경로는 실제 파일 위치에 맞게 수정
 import { useNavigate } from "react-router-dom";
 
-
-// 면접 질문 목록 (실제로는 API에서 가져올 수 있음)
-const interviewQuestions = [
-  "본인의 강점과 약점에 대해 말씀해주세요.",
-  "지원하신 직무에 지원한 이유가 무엇인가요?",
-  "팀 프로젝트에서 갈등 상황을 해결한 경험이 있나요?",
-  "직무와 관련된 기술적 경험에 대해 설명해주세요.",
-  "향후 5년 후의 자신의 모습은 어떻게 되어 있을 것 같나요?",
-  "이전 업무나 학업에서 실패한 경험과 그로부터 배운 점은 무엇인가요?",
-  "우리 회사에 지원한 이유는 무엇인가요?",
-  "스트레스 상황에서 어떻게 대처하시나요?",
-  "본인의 리더십 스타일은 어떤가요?",
-  "마지막으로 하고 싶은 질문이 있으신가요?"
-];
-
-
-
 type InterviewCategory = '일반' | '직무' | '기술' | '인성';
 
 interface InterviewOption {
@@ -46,6 +29,8 @@ const LiveInterviewReady: React.FC = () => {
   const [interviewState, setInterviewState] = useState<'setup' | 'ready' | 'inProgress' | 'feedbackList'>('setup');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [interviewQuestions, setInterviewQuestions] = useState<Array<string>>([""]);
+  const [interviewId, setInterviewId] = useState<number>(-1);
   const [answers, setAnswers] = useState<{question: string, videoUrl: string}[]>([]);
   const [feedback, setFeedback] = useState<{
     overallScore: number;
@@ -55,9 +40,22 @@ const LiveInterviewReady: React.FC = () => {
     detailedFeedback: {question: string, feedback: string}[];
   } | null>(null);
   
-  const startInterview = () => {
-    setInterviewState('inProgress');
-    setCurrentQuestionIndex(0);
+  const startInterview = async () => {
+    console.log(interviewId);
+    try {
+      const res = await fetch(`/api/v1/interview/${interviewId}/start`, {
+        method: "GET",
+      });
+  
+      const data = await res.json();
+      console.log("data:", data);
+      setInterviewQuestions(data.questions);
+    } catch (err) {
+      console.error("서버 통신 실패:", err);
+      alert("⚠️ 서버 연결이 안되었지만, 테스트용 면접은 계속 진행합니다.");
+    } finally {
+      setInterviewState('inProgress');
+    }
   };
 
 const [showNextButton, setShowNextButton] = useState(false);
@@ -146,7 +144,7 @@ const startRecording = async () => {
 }
 
   const renderSetupView = () => (
-    <LiveInterviewSetup onStartInterview={() => setInterviewState('ready')} />
+    <LiveInterviewSetup onStartInterview={() => setInterviewState('ready')} setInterviewId={setInterviewId}/>
   );
 
 
