@@ -1,4 +1,4 @@
-// src/services/auth.ts (디버깅 버전)
+// src/services/auth.ts (GitHub 주소 추가 버전)
 export interface LoginRequest {
   email: string;
   password: string;
@@ -8,6 +8,7 @@ export interface SignupRequest {
   username: string;
   email: string;
   password: string;
+  githubUrl?: string; // GitHub 주소 추가 (선택사항)
 }
 
 const API_BASE_URL = 'http://test.intelliview.site';
@@ -86,7 +87,7 @@ class AuthService {
     }
   }
 
-  // 회원가입
+  // 회원가입 (GitHub 주소 포함)
   async signup(userData: SignupRequest): Promise<string> {
     try {
       console.log('🚀 회원가입 요청:', userData);
@@ -109,6 +110,12 @@ class AuthService {
 
       const result = await response.text();
       console.log('✅ 회원가입 성공:', result);
+      
+      // GitHub 주소가 포함된 경우 로그 출력
+      if (userData.githubUrl) {
+        console.log('📝 GitHub 주소 등록됨:', userData.githubUrl);
+      }
+      
       return result;
     } catch (error) {
       console.error('💥 회원가입 에러:', error);

@@ -13,12 +13,13 @@ const LogoutPage: React.FC = () => {
     password: ''
   });
   
-  // 회원가입 폼
+  // 회원가입 폼 (GitHub 주소 추가)
   const [signupForm, setSignupForm] = useState({
     username: '',
     email: '',
     password: '',
-    passwordConfirm: ''
+    passwordConfirm: '',
+    githubUrl: '' // GitHub 주소 필드 추가
   });
   
   const [error, setError] = useState('');
@@ -67,7 +68,8 @@ const LogoutPage: React.FC = () => {
       await authService.signup({
         username: signupForm.username,
         email: signupForm.email,
-        password: signupForm.password
+        password: signupForm.password,
+        githubUrl: signupForm.githubUrl || undefined // 빈 문자열이면 undefined로 처리
       });
       
       alert('회원가입이 완료되었습니다. 로그인해주세요.');
@@ -77,7 +79,8 @@ const LogoutPage: React.FC = () => {
         username: '',
         email: '',
         password: '',
-        passwordConfirm: ''
+        passwordConfirm: '',
+        githubUrl: '' // 초기화에 추가
       });
       setError('');
     } catch (error: any) {
@@ -172,6 +175,24 @@ const LogoutPage: React.FC = () => {
                     placeholder="비밀번호를 다시 입력하세요"
                     required
                   />
+                </div>
+
+                {/* GitHub 주소 입력 필드 추가 */}
+                <div>
+                  <label htmlFor="githubUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                    GitHub 주소 (선택사항)
+                  </label>
+                  <input
+                    id="githubUrl"
+                    type="url"
+                    value={signupForm.githubUrl}
+                    onChange={(e) => setSignupForm({...signupForm, githubUrl: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="https://github.com/username"
+                  />
+                  <p className="mt-1 text-xs text-red-600">
+                    사용자의 Pinned된 리포지토리만 크롤링해서 문제 생성에 사용됩니다
+                  </p>
                 </div>
                 
                 <div className="pt-2">
