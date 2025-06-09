@@ -33,6 +33,7 @@ const DailyQuestion: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<string | null>(null);
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+  const [hasExistingCategory, setHasExistingCategory] = useState(false);
 
   // 컴포넌트 마운트 시 오늘의 질문 조회
   useEffect(() => {
@@ -69,6 +70,7 @@ const DailyQuestion: React.FC = () => {
       if (error.message && error.message.includes('카테고리')) {
         setError('먼저 관심 분야 카테고리를 설정해주세요.');
         setShowCategoryModal(true);
+        setHasExistingCategory(false);
         return;
       }
       
@@ -93,6 +95,7 @@ const DailyQuestion: React.FC = () => {
       const savedCategory = localStorage.getItem('userCategory');
       if (savedCategory) {
         setCurrentCategory(savedCategory);
+        setHasExistingCategory(true);
       }
     } catch (error) {
       console.error('카테고리 조회 실패:', error);
@@ -120,6 +123,7 @@ const DailyQuestion: React.FC = () => {
       await apiPost('/api/v1/daily/category', { category });
       
       setCurrentCategory(category);
+      setHasExistingCategory(true);
       localStorage.setItem('userCategory', category);
       setShowCategoryModal(false);
       
@@ -136,6 +140,8 @@ const DailyQuestion: React.FC = () => {
       }
       
       if (error.message && error.message.includes('이미 카테고리가 등록')) {
+        // 이미 카테고리가 등록되어 있다면 PATCH로 변경
+        setHasExistingCategory(true);
         updateCategory(category);
       } else {
         setError('카테고리 설정에 실패했습니다. 다시 시도해주세요.');
@@ -260,11 +266,13 @@ const DailyQuestion: React.FC = () => {
     fetchTodayQuestion();
   };
 
-  // 카테고리 선택 핸들러
+  // 카테고리 선택 핸들러 - POST/PATCH 자동 판별
   const handleCategorySelect = (category: CategoryData['category']) => {
-    if (currentCategory) {
+    if (hasExistingCategory || currentCategory) {
+      // 이미 카테고리가 있으면 PATCH 사용
       updateCategory(category);
     } else {
+      // 카테고리가 없으면 POST 사용
       setCategory(category);
     }
   };
@@ -278,6 +286,11 @@ const DailyQuestion: React.FC = () => {
       'CS': 'CS 기초'
     };
     return categoryMap[category] || category;
+  };
+
+  // 카테고리 변경 버튼 클릭
+  const handleCategoryChangeClick = () => {
+    setShowCategoryModal(true);
   };
 
   // 초기 로딩 상태
@@ -334,44 +347,58 @@ const DailyQuestion: React.FC = () => {
         <div className="glass rounded-xl p-6 mb-8 animate-slide-in">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
             <h2 className="text-lg font-medium mb-4 md:mb-0">관심 분야 설정</h2>
-            {currentCategory && (
-              <span className="text-sm text-muted-foreground">
-                현재: <span className="font-medium text-primary">{getCategoryDisplayText(currentCategory)}</span>
-              </span>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {(['BACKEND', 'FRONTEND', 'DEVOPS', 'CS'] as const).map((category) => (
-              <button
-                key={category}
-                onClick={() => handleCategorySelect(category)}
-                disabled={isCategoryLoading}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
-                  currentCategory === category
-                    ? 'border-primary bg-primary text-white shadow-lg'
-                    : 'border-gray-200 hover:border-primary hover:bg-primary/5'
-                } ${isCategoryLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-              >
-                <div className="font-medium text-sm">{getCategoryDisplayText(category)}</div>
-                {currentCategory === category && (
-                  <div className="text-xs mt-1 text-white/90">✓ 선택됨</div>
-                )}
-              </button>
-            ))}
-          </div>
-          
-          {isCategoryLoading && (
-            <div className="flex items-center justify-center gap-2 text-muted-foreground mt-4">
-              <div className="animate-spin h-4 w-4 border-b-2 border-primary"></div>
-              <span>카테고리 설정 중...</span>
+            <div className="flex items-center gap-4">
+              {currentCategory && (
+                <span className="text-sm text-muted-foreground">
+                  현재: <span className="font-medium text-primary">{getCategoryDisplayText(currentCategory)}</span>
+                </span>
+              )}
+              {currentCategory && (
+                <button
+                  onClick={handleCategoryChangeClick}
+                  className="text-sm text-primary hover:underline"
+                >
+                  변경하기
+                </button>
+              )}
             </div>
-          )}
+          </div>
           
-          {!currentCategory && !isCategoryLoading && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                💡 관심 분야를 선택하면 해당 분야에 맞는 면접 질문을 받을 수 있어요!
+          {!currentCategory && (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {(['BACKEND', 'FRONTEND', 'DEVOPS', 'CS'] as const).map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => handleCategorySelect(category)}
+                    disabled={isCategoryLoading}
+                    className={`p-4 rounded-lg border-2 transition-all duration-200 border-gray-200 hover:border-primary hover:bg-primary/5 ${isCategoryLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                  >
+                    <div className="font-medium text-sm">{getCategoryDisplayText(category)}</div>
+                  </button>
+                ))}
+              </div>
+              
+              {isCategoryLoading && (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground mt-4">
+                  <div className="animate-spin h-4 w-4 border-b-2 border-primary"></div>
+                  <span>카테고리 설정 중...</span>
+                </div>
+              )}
+              
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  💡 관심 분야를 선택하면 해당 분야에 맞는 면접 질문을 받을 수 있어요!
+                </p>
+              </div>
+            </>
+          )}
+
+          {currentCategory && !showCategoryModal && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">
+                ✅ <strong>{getCategoryDisplayText(currentCategory)}</strong> 분야로 설정되어 있습니다. 
+                해당 분야에 맞는 질문을 받게 됩니다.
               </p>
             </div>
           )}
