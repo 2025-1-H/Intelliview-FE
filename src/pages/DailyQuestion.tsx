@@ -1,76 +1,270 @@
+import React, { useState, useEffect } from 'react';
+import { apiGet, apiPost, apiPut } from '@/services/api';
+import { authService } from '@/services/auth';
 
-import React, { useState } from 'react';
+const API_BASE_URL = 'http://test.intelliview.site';
 
-// 가상의 오늘의 질문 데이터
-const todayQuestion = {
-  id: 'q123',
-  question: "본인의 전문 분야에서 가장 어려웠던 문제를 해결한 경험에 대해 설명해주세요. 어떤 접근 방식을 취했고, 그 결과는 어땠나요?",
-  category: "문제 해결 능력",
-  difficultyLevel: "중급",
-  tags: ["경험", "문제 해결", "성과"]
-};
+interface QuestionData {
+  questionId: number;
+  questionText: string;
+  category?: string;
+  difficultyLevel?: string;
+  tags?: string[];
+}
 
-// 가상의 모범 답안
-const exampleAnswer = `
-제 이전 프로젝트에서 레거시 코드의 성능 문제로 사용자 경험이 저하되는 심각한 문제가 있었습니다. 시스템은 증가하는 데이터 양을 처리하는 데 어려움을 겪고 있었고, 응답 시간이 크게 늘어났습니다.
+interface FeedbackData {
+  modelAnswer: string;
+  userAnswer: string;
+  attemptCount: number;
+}
 
-이 문제를 해결하기 위해 다음과 같은 단계적 접근법을 취했습니다:
-
-1. 먼저, 성능 병목 현상을 정확히 식별하기 위해 프로파일링 도구를 활용해 시스템을 분석했습니다.
-2. 분석 결과, 데이터베이스 쿼리 최적화와 캐싱 시스템 도입이 필요하다고 판단했습니다.
-3. 팀원들과 협력하여 데이터베이스 인덱싱을 개선하고, Redis를 활용한 캐싱 레이어를 구현했습니다.
-4. 점진적으로 변경사항을 적용하고 각 단계마다 성능 테스트를 진행했습니다.
-
-결과적으로 시스템 응답 시간을 70% 단축할 수 있었고, 사용자 경험이 크게 향상되었습니다. 이 프로젝트를 통해 레거시 시스템 개선 방법론과 성능 최적화 기술에 대한 깊은 이해를 얻을 수 있었습니다. 또한 문제 해결을 위한 체계적인 접근 방식의 중요성을 배웠습니다.
-`;
+interface CategoryData {
+  category: 'BACKEND' | 'FRONTEND' | 'DEVOPS' | 'CS';
+}
 
 const DailyQuestion: React.FC = () => {
+  const [question, setQuestion] = useState<QuestionData | null>(null);
   const [answer, setAnswer] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    score: number;
-    strengths: string[];
-    improvements: string[];
-    detailedFeedback: string;
-  } | null>(null);
+  const [feedback, setFeedback] = useState<FeedbackData | null>(null);
   const [showExample, setShowExample] = useState(false);
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const [error, setError] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState<string | null>(null);
+  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+
+  // 컴포넌트 마운트 시 오늘의 질문 조회
+  useEffect(() => {
+    fetchTodayQuestion();
+    getCurrentCategory();
+  }, []);
+
+  // GET /api/v1/daily/question - 오늘의 질문 조회
+  const fetchTodayQuestion = async () => {
+    try {
+      setIsInitialLoading(true);
+      setError(null);
+      
+      const response = await apiGet('/api/v1/daily/question');
+      
+      setQuestion({
+        questionId: response.questionId,
+        questionText: response.questionText,
+        category: response.category || "일반",
+        difficultyLevel: response.difficultyLevel || "중급",
+        tags: response.tags || ["면접", "준비"]
+      });
+
+      // 기존에 답변했는지 확인 (만약 답변이 있다면 상태 업데이트)
+      // 백엔드에서 이미 답변한 경우를 알려주는 필드가 있다면 여기서 처리
+      if (response.hasAnswered) {
+        setIsSubmitted(true);
+        // 이미 답변했다면 피드백도 가져오기
+        fetchFeedback();
+      }
+      
+    } catch (error: any) {
+      console.error('오늘의 질문 조회 실패:', error);
+      
+      // 카테고리 미설정 에러인 경우
+      if (error.message && error.message.includes('카테고리')) {
+        setError('먼저 관심 분야 카테고리를 설정해주세요.');
+        setShowCategoryModal(true);
+        return;
+      }
+      
+      setError('오늘의 질문을 불러오는데 실패했습니다. 다시 시도해주세요.');
+      
+      // 에러 발생 시 가상 데이터로 대체 (개발 중에만)
+      setQuestion({
+        questionId: 0,
+        questionText: "본인의 전문 분야에서 가장 어려웠던 문제를 해결한 경험에 대해 설명해주세요. 어떤 접근 방식을 취했고, 그 결과는 어땠나요?",
+        category: "문제 해결 능력",
+        difficultyLevel: "중급",
+        tags: ["경험", "문제 해결", "성과"]
+      });
+    } finally {
+      setIsInitialLoading(false);
+    }
+  };
+
+  // GET 현재 사용자 카테고리 조회
+  const getCurrentCategory = async () => {
+    try {
+      // 백엔드에 사용자 카테고리 조회 API가 없다면 
+      // 질문 조회 시 에러 메시지로 판단하거나
+      // 로컬 스토리지를 활용할 수 있습니다
+      const savedCategory = localStorage.getItem('userCategory');
+      if (savedCategory) {
+        setCurrentCategory(savedCategory);
+      }
+    } catch (error) {
+      console.error('카테고리 조회 실패:', error);
+    }
+  };
+
+  // POST /api/v1/daily/category - 카테고리 설정 (최초)
+  const setCategory = async (category: CategoryData['category']) => {
+    try {
+      setIsCategoryLoading(true);
+      setError(null);
+      
+      // 인증 상태 확인 및 디버깅 로그 추가
+      console.log('🔍 카테고리 설정 시도:', {
+        category,
+        isLoggedIn: authService.isLoggedIn(),
+        token: authService.getToken()?.substring(0, 20) + '...'
+      });
+
+      if (!authService.isLoggedIn()) {
+        setError('로그인이 필요합니다. 다시 로그인해주세요.');
+        // 로그인 페이지로 리다이렉트
+        window.location.href = '/';
+        return;
+      }
+      
+      await apiPost('/api/v1/daily/category', { category });
+      
+      setCurrentCategory(category);
+      localStorage.setItem('userCategory', category);
+      setShowCategoryModal(false);
+      
+      // 카테고리 설정 후 질문 다시 조회
+      fetchTodayQuestion();
+      
+    } catch (error: any) {
+      console.error('카테고리 설정 실패:', error);
+      
+      // 403 에러인 경우 인증 문제로 처리
+      if (error.message && error.message.includes('403')) {
+        setError('인증이 필요합니다. 다시 로그인해주세요.');
+        authService.logout();
+        window.location.href = '/';
+        return;
+      }
+      
+      if (error.message && error.message.includes('이미 카테고리가 등록')) {
+        // 이미 카테고리가 있는 경우 업데이트로 전환
+        updateCategory(category);
+      } else {
+        setError('카테고리 설정에 실패했습니다. 다시 시도해주세요.');
+      }
+    } finally {
+      setIsCategoryLoading(false);
+    }
+  };
+
+  // PATCH /api/v1/daily/category - 카테고리 수정
+  const updateCategory = async (category: CategoryData['category']) => {
+    try {
+      setIsCategoryLoading(true);
+      setError(null);
+      
+      // 인증 상태 확인
+      if (!authService.isLoggedIn()) {
+        setError('로그인이 필요합니다. 다시 로그인해주세요.');
+        window.location.href = '/';
+        return;
+      }
+
+      console.log('🔄 카테고리 업데이트 시도:', {
+        category,
+        token: authService.getToken()?.substring(0, 20) + '...'
+      });
+      
+      // PATCH 요청을 위해 fetch를 직접 사용
+      const token = authService.getToken();
+      const response = await fetch(`${API_BASE_URL}/api/v1/daily/category`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({ category })
+      });
+
+      console.log('📡 카테고리 업데이트 응답:', response.status);
+
+      if (response.status === 403) {
+        setError('인증이 만료되었습니다. 다시 로그인해주세요.');
+        authService.logout();
+        window.location.href = '/';
+        return;
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`카테고리 업데이트 실패: ${response.status} ${errorText}`);
+      }
+      
+      setCurrentCategory(category);
+      localStorage.setItem('userCategory', category);
+      setShowCategoryModal(false);
+      
+      // 카테고리 업데이트 후 질문 다시 조회
+      fetchTodayQuestion();
+      
+    } catch (error: any) {
+      console.error('카테고리 업데이트 실패:', error);
+      setError('카테고리 업데이트에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsCategoryLoading(false);
+    }
+  };
+  // POST /api/v1/daily/question - 답변 제출
+  const submitAnswer = async () => {
     if (!answer.trim()) return;
     
-    setIsLoading(true);
-    
-    // 가상의 API 호출 시뮬레이션
-    setTimeout(() => {
-      setFeedback({
-        score: 75,
-        strengths: [
-          "문제 상황을 명확하게 설명함",
-          "해결 과정을 단계별로 제시함",
-          "결과를 수치화하여 보여줌"
-        ],
-        improvements: [
-          "구체적인 기술적 세부사항 추가 필요",
-          "팀 협업에 대한 자신의 역할 강조 필요",
-          "문제 해결 과정에서 마주친 어려움과 극복 방법 설명 필요"
-        ],
-        detailedFeedback: `
-답변에서 문제 상황과 해결 과정, 결과를 기본적인 STAR 기법에 맞춰 설명한 점이 좋습니다. 특히 결과를 '70% 단축'과 같이 수치화한 것은 면접관에게 구체적인 성과를 보여주는 좋은 방법입니다.
-
-개선이 필요한 부분으로는, 문제 해결 과정에서 사용한 기술에 대해 더 구체적으로 설명하면 좋겠습니다. 예를 들어, 어떤 프로파일링 도구를 사용했는지, 데이터베이스 인덱싱을 어떻게 개선했는지 등의 세부 정보를 추가하면 기술적 역량을 더 잘 보여줄 수 있습니다.
-
-또한, 팀 프로젝트였다면 팀 내에서 자신의 역할과 기여도를 더 명확히 설명하는 것이 중요합니다. '내가 어떤 결정을 주도했는지', '어떤 부분에서 창의적인 해결책을 제시했는지' 등을 강조하면 리더십과 창의성을 보여줄 수 있습니다.
-
-마지막으로, 문제 해결 과정에서 마주친 어려움이나 예상치 못한 장애물, 그리고 이를 어떻게 극복했는지에 대한 이야기를 추가하면 역경 극복 능력과 문제 해결 능력을 보여줄 수 있습니다.
-
-전반적으로 기본 구조는 잘 갖추었으나, 위의 요소들을 추가하여 답변의 깊이와 설득력을 높이면 더 효과적인 답변이 될 것입니다.
-        `
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      await apiPost('/api/v1/daily/question', {
+        answer: answer.trim()
       });
+      
       setIsSubmitted(true);
+      
+      // 답변 제출 후 피드백 조회
+      await fetchFeedback();
+      
+    } catch (error) {
+      console.error('답변 제출 실패:', error);
+      setError('답변 제출에 실패했습니다. 다시 시도해주세요.');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
+  };
+
+  // GET /api/v1/daily/feedback - 피드백 조회
+  const fetchFeedback = async () => {
+    try {
+      const response = await apiGet('/api/v1/daily/feedback');
+      
+      setFeedback({
+        modelAnswer: response.modelAnswer,
+        userAnswer: response.userAnswer,
+        attemptCount: response.attemptCount
+      });
+      
+    } catch (error) {
+      console.error('피드백 조회 실패:', error);
+      setError('피드백을 불러오는데 실패했습니다.');
+      
+      // 에러 발생 시 가상 피드백 데이터로 대체 (개발 중에만)
+      setFeedback({
+        modelAnswer: "모범 답안을 불러올 수 없습니다.",
+        userAnswer: answer,
+        attemptCount: 1
+      });
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitAnswer();
   };
   
   const resetQuestion = () => {
@@ -78,7 +272,69 @@ const DailyQuestion: React.FC = () => {
     setIsSubmitted(false);
     setFeedback(null);
     setShowExample(false);
+    setError(null);
+    // 새로운 질문 조회
+    fetchTodayQuestion();
   };
+
+  // 카테고리 선택 핸들러
+  const handleCategorySelect = (category: CategoryData['category']) => {
+    if (currentCategory) {
+      updateCategory(category);
+    } else {
+      setCategory(category);
+    }
+  };
+
+  // 카테고리 표시 텍스트
+  const getCategoryDisplayText = (category: string) => {
+    const categoryMap: { [key: string]: string } = {
+      'BACKEND': '백엔드',
+      'FRONTEND': '프론트엔드', 
+      'DEVOPS': '데브옵스',
+      'CS': 'CS 기초'
+    };
+    return categoryMap[category] || category;
+  };
+
+  // 초기 로딩 상태
+  if (isInitialLoading) {
+    return (
+      <div className="pt-24 pb-16 min-h-screen">
+        <div className="container mx-auto max-w-4xl px-4">
+          <div className="text-center mb-12">
+            <h1 className="text-3xl font-bold tracking-tight mb-4">오늘의 면접 질문</h1>
+            <p className="text-muted-foreground">질문을 불러오는 중...</p>
+          </div>
+          <div className="glass rounded-xl p-8 text-center">
+            <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태 (질문을 불러오지 못한 경우)
+  if (!question) {
+    return (
+      <div className="pt-24 pb-16 min-h-screen">
+        <div className="container mx-auto max-w-4xl px-4">
+          <div className="text-center mb-12">
+            <h1 className="text-3xl font-bold tracking-tight mb-4">오늘의 면접 질문</h1>
+          </div>
+          <div className="glass rounded-xl p-8 text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button 
+              onClick={fetchTodayQuestion}
+              className="btn-bounce bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg font-medium"
+            >
+              다시 시도
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="pt-24 pb-16 min-h-screen">
@@ -91,169 +347,229 @@ const DailyQuestion: React.FC = () => {
           </p>
         </div>
 
-        <div className="glass rounded-xl p-8 animate-slide-in">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-            <h2 className="text-xl font-medium">오늘의 질문</h2>
-            <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
-              <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-medium">
-                {todayQuestion.category}
+        {/* 카테고리 선택 섹션 */}
+        <div className="glass rounded-xl p-6 mb-8 animate-slide-in">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+            <h2 className="text-lg font-medium mb-4 md:mb-0">관심 분야 설정</h2>
+            {currentCategory && (
+              <span className="text-sm text-muted-foreground">
+                현재: <span className="font-medium text-primary">{getCategoryDisplayText(currentCategory)}</span>
               </span>
-              <span className="bg-secondary text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
-                {todayQuestion.difficultyLevel}
-              </span>
-              {todayQuestion.tags.map((tag, index) => (
-                <span 
-                  key={index} 
-                  className="bg-white/60 text-muted-foreground px-3 py-1 rounded-full text-xs"
-                >
-                  #{tag}
-                </span>
-              ))}
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {(['BACKEND', 'FRONTEND', 'DEVOPS', 'CS'] as const).map((category) => (
+              <button
+                key={category}
+                onClick={() => handleCategorySelect(category)}
+                disabled={isCategoryLoading}
+                className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                  currentCategory === category
+                    ? 'border-primary bg-primary text-white shadow-lg'
+                    : 'border-gray-200 hover:border-primary hover:bg-primary/5'
+                } ${isCategoryLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+              >
+                <div className="font-medium text-sm">{getCategoryDisplayText(category)}</div>
+                <div className={`text-xs mt-1 ${
+                  currentCategory === category ? 'text-white/80' : 'text-muted-foreground'
+                }`}>
+                  {category === 'BACKEND' && '서버, DB, API'}
+                  {category === 'FRONTEND' && 'UI/UX, 웹개발'}
+                  {category === 'DEVOPS' && '인프라, 배포'}
+                  {category === 'CS' && '알고리즘, 자료구조'}
+                </div>
+                {currentCategory === category && (
+                  <div className="text-xs mt-1 text-white/90">✓ 선택됨</div>
+                )}
+              </button>
+            ))}
+          </div>
+          
+          {isCategoryLoading && (
+            <div className="flex items-center justify-center gap-2 text-muted-foreground mt-4">
+              <div className="animate-spin h-4 w-4 border-b-2 border-primary"></div>
+              <span>카테고리 설정 중...</span>
             </div>
-          </div>
+          )}
           
-          <div className="bg-white/60 rounded-lg p-5 mb-8">
-            <p className="text-lg">{todayQuestion.question}</p>
+          {!currentCategory && !isCategoryLoading && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                💡 관심 분야를 선택하면 해당 분야에 맞는 면접 질문을 받을 수 있어요!
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* 에러 메시지 */}
+        {error && !showCategoryModal && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
           </div>
-          
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
-              <label htmlFor="answer" className="block text-sm font-medium mb-2">
-                나의 답변:
-              </label>
-              <textarea
-                id="answer"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                disabled={isSubmitted || isLoading}
-                placeholder="이 질문에 대한 답변을 작성해보세요..."
-                className="w-full h-40 p-4 rounded-lg border border-input bg-white/80 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-80"
-              />
-              
-              <div className="mt-2 text-xs text-muted-foreground">
-                {answer.length > 0 ? `${answer.length}자 입력됨` : '답변을 입력하세요'}
+        )}
+
+        {/* 오늘의 질문 섹션 */}
+        {question && (
+          <div className="glass rounded-xl p-8 animate-slide-in">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+              <h2 className="text-xl font-medium">오늘의 질문</h2>
+              <div className="flex flex-wrap gap-2 mt-2 md:mt-0">
+                <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-medium">
+                  {question.category}
+                </span>
+                <span className="bg-secondary text-muted-foreground px-3 py-1 rounded-full text-xs font-medium">
+                  {question.difficultyLevel}
+                </span>
+                {question.tags?.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    className="bg-white/60 text-muted-foreground px-3 py-1 rounded-full text-xs"
+                  >
+                    #{tag}
+                  </span>
+                ))}
               </div>
             </div>
             
-            <div className="flex flex-wrap gap-3">
-              {!isSubmitted && !isLoading && (
-                <>
-                  <button
-                    type="submit"
-                    disabled={!answer.trim()}
-                    className={`btn-bounce px-6 py-2 rounded-lg font-medium shadow-sm ${
-                      answer.trim() 
-                        ? 'bg-primary hover:bg-primary/90 text-white' 
-                        : 'bg-primary/50 text-white/80 cursor-not-allowed'
-                    }`}
-                  >
-                    답변 제출하기
-                  </button>
-                  
+            <div className="bg-white/60 rounded-lg p-5 mb-8">
+              <p className="text-lg">{question.questionText}</p>
+            </div>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="mb-6">
+                <label htmlFor="answer" className="block text-sm font-medium mb-2">
+                  나의 답변:
+                </label>
+                <textarea
+                  id="answer"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  disabled={isSubmitted || isLoading}
+                  placeholder="이 질문에 대한 답변을 작성해보세요..."
+                  className="w-full h-40 p-4 rounded-lg border border-input bg-white/80 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-80"
+                />
+                
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {answer.length > 0 ? `${answer.length}자 입력됨` : '답변을 입력하세요'}
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
+                {!isSubmitted && !isLoading && (
+                  <>
+                    <button
+                      type="submit"
+                      disabled={!answer.trim()}
+                      className={`btn-bounce px-6 py-2 rounded-lg font-medium shadow-sm ${
+                        answer.trim() 
+                          ? 'bg-primary hover:bg-primary/90 text-white' 
+                          : 'bg-primary/50 text-white/80 cursor-not-allowed'
+                      }`}
+                    >
+                      답변 제출하기
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => setShowExample(!showExample)}
+                      className="btn-bounce bg-secondary hover:bg-secondary/80 text-foreground px-6 py-2 rounded-lg font-medium"
+                    >
+                      {showExample ? '모범 답안 숨기기' : '모범 답안 보기'}
+                    </button>
+                  </>
+                )}
+
+                {isLoading && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <div className="animate-spin h-4 w-4 border-b-2 border-primary"></div>
+                    <span>답변을 제출하는 중...</span>
+                  </div>
+                )}
+
+                {isSubmitted && (
                   <button
                     type="button"
-                    onClick={() => setShowExample(!showExample)}
-                    className="btn-bounce bg-secondary hover:bg-secondary/80 text-foreground px-6 py-2 rounded-lg font-medium"
+                    onClick={resetQuestion}
+                    className="btn-bounce bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg font-medium"
                   >
-                    {showExample ? '모범 답안 숨기기' : '모범 답안 보기'}
+                    새 질문 받기
                   </button>
-                </>
-              )}
-              
-              {isLoading && (
-                <button
-                  disabled
-                  className="bg-primary/70 text-white px-6 py-2 rounded-lg font-medium shadow-sm opacity-70 flex items-center"
-                >
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                  피드백 생성 중...
-                </button>
-              )}
-              
-              {isSubmitted && feedback && (
-                <button
-                  type="button"
-                  onClick={resetQuestion}
-                  className="btn-bounce bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg font-medium shadow-sm"
-                >
-                  새로운 답변 작성하기
-                </button>
-              )}
-            </div>
-          </form>
-        </div>
-        
-        {showExample && !isSubmitted && (
-          <div className="glass rounded-xl p-8 mt-8 animate-slide-up">
-            <h2 className="text-xl font-medium mb-6">모범 답안 예시</h2>
-            <div className="bg-white/60 rounded-lg p-5">
-              <p className="whitespace-pre-line text-sm">{exampleAnswer}</p>
-            </div>
-            <div className="mt-6">
-              <div className="text-sm text-muted-foreground">
-                * 이 모범 답안은 참고용입니다. 자신만의 경험과 스타일로 답변을 작성하세요.
+                )}
               </div>
+            </form>
+          </div>
+        )}
+
+        {/* 카테고리 미설정 시 안내 */}
+        {!question && !isInitialLoading && !error && (
+          <div className="glass rounded-xl p-8 text-center">
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🎯</span>
+              </div>
+              <h3 className="text-lg font-medium mb-2">관심 분야를 선택해주세요!</h3>
+              <p className="text-muted-foreground">
+                관심 분야를 선택하시면 해당 분야에 맞는 면접 질문을 받을 수 있어요.
+              </p>
             </div>
           </div>
         )}
-        
+
+        {/* 모범 답안 표시 */}
+        {showExample && feedback && (
+          <div className="glass rounded-xl p-8 mt-8 animate-slide-up">
+            <h2 className="text-xl font-medium mb-4">모범 답안</h2>
+            <div className="bg-white/60 rounded-lg p-5">
+              <p className="whitespace-pre-line leading-relaxed">
+                {feedback.modelAnswer}
+              </p>
+            </div>
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowExample(false)}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                모범 답안 숨기기
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 피드백 표시 */}
         {isSubmitted && feedback && (
           <div className="glass rounded-xl p-8 mt-8 animate-slide-up">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-medium">AI 피드백</h2>
-              <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                feedback.score >= 90 ? 'bg-green-100 text-green-800' :
-                feedback.score >= 80 ? 'bg-blue-100 text-blue-800' :
-                feedback.score >= 70 ? 'bg-amber-100 text-amber-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                점수: {feedback.score}/100
-              </div>
-            </div>
+            <h2 className="text-xl font-medium mb-6">답변 분석 및 피드백</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-green-50 rounded-lg p-4">
-                <h3 className="font-medium text-green-700 mb-2">잘한 점</h3>
-                <ul className="text-sm space-y-2">
-                  {feedback.strengths.map((strength, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-green-500 mt-0.5">✓</span>
-                      <span>{strength}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div className="bg-amber-50 rounded-lg p-4">
-                <h3 className="font-medium text-amber-700 mb-2">개선할 점</h3>
-                <ul className="text-sm space-y-2">
-                  {feedback.improvements.map((improvement, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-amber-500 mt-0.5">!</span>
-                      <span>{improvement}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="font-medium mb-3">상세 피드백</h3>
+            <div className="space-y-6">
               <div className="bg-white/60 rounded-lg p-5">
-                <p className="whitespace-pre-line text-sm">
-                  {feedback.detailedFeedback}
+                <h3 className="font-medium mb-3">제출한 답변</h3>
+                <p className="text-muted-foreground whitespace-pre-line leading-relaxed">
+                  {feedback.userAnswer}
                 </p>
               </div>
-            </div>
-            
-            <div className="mt-8 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setShowExample(!showExample)}
-                className="btn-bounce bg-secondary hover:bg-secondary/80 text-foreground px-6 py-2 rounded-lg font-medium"
-              >
-                {showExample ? '모범 답안 숨기기' : '모범 답안 보기'}
-              </button>
+
+              <div className="bg-white/60 rounded-lg p-5">
+                <h3 className="font-medium mb-3">시도 횟수</h3>
+                <p className="text-2xl font-bold text-primary">{feedback.attemptCount}회</p>
+              </div>
+
+              <div className="bg-white/60 rounded-lg p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium">모범 답안</h3>
+                  <button
+                    onClick={() => setShowExample(!showExample)}
+                    className="text-sm text-primary hover:text-primary/80"
+                  >
+                    {showExample ? '숨기기' : '보기'}
+                  </button>
+                </div>
+                {showExample && (
+                  <p className="text-muted-foreground whitespace-pre-line leading-relaxed">
+                    {feedback.modelAnswer}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -298,6 +614,62 @@ const DailyQuestion: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* 카테고리 설정 모달 */}
+        {showCategoryModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+              <h2 className="text-xl font-bold mb-4 text-center">
+                {currentCategory ? '관심 분야 변경' : '관심 분야 설정'}
+              </h2>
+              <p className="text-muted-foreground text-center mb-6">
+                {currentCategory 
+                  ? '새로운 관심 분야를 선택해주세요.' 
+                  : '질문을 받을 관심 분야를 선택해주세요.'}
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {(['BACKEND', 'FRONTEND', 'DEVOPS', 'CS'] as const).map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => handleCategorySelect(category)}
+                    disabled={isCategoryLoading}
+                    className={`p-4 rounded-lg border-2 transition-colors ${
+                      currentCategory === category
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-gray-200 hover:border-primary hover:bg-primary/5'
+                    } ${isCategoryLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="font-medium">{getCategoryDisplayText(category)}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {category === 'BACKEND' && '서버, 데이터베이스, API'}
+                      {category === 'FRONTEND' && 'UI/UX, 웹 개발, 반응형'}
+                      {category === 'DEVOPS' && '인프라, 배포, 운영'}
+                      {category === 'CS' && '자료구조, 알고리즘, 네트워크'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              {isCategoryLoading && (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
+                  <div className="animate-spin h-4 w-4 border-b-2 border-primary"></div>
+                  <span>설정 중...</span>
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCategoryModal(false)}
+                  disabled={isCategoryLoading}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
