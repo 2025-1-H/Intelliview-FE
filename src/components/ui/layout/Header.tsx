@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { authService } from '../../../services/auth'
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   
   useEffect(() => {
     const handleScroll = () => {
@@ -14,12 +17,22 @@ const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // 로그인 상태 체크
+  useEffect(() => {
+    setIsLoggedIn(authService.isLoggedIn());
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    authService.logout();
+    setIsLoggedIn(false);
+    navigate('/');
+  };
+
   const navItems = [
     { name: '실시간 면접', path: '/live-interview' },
     { name: '면접 캘린더', path: '/calendar' },
     { name: '오늘의 질문', path: '/daily-question' },
     { name: '자기소개 피드백', path: '/video-feedback' },
-    { name: '로그아웃', path: '/' }, // 이 부분을 로그아웃으로 변경하고 경로는 /로 설정
   ];
 
   return (
@@ -30,7 +43,7 @@ const Header: React.FC = () => {
     >
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link 
-          to="/home" // 로고 클릭 시 /home으로 이동
+          to="/home"
           className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2"
         >
           <span className="bg-primary text-white rounded-md px-2 py-1 text-sm">Interview</span>
@@ -51,6 +64,14 @@ const Header: React.FC = () => {
               {item.name}
             </Link>
           ))}
+          
+          {/* 로그아웃 버튼 */}
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 rounded-md transition-all duration-200 hover:bg-red-50 text-red-600 hover:text-red-700"
+          >
+            로그아웃
+          </button>
         </nav>
         
         <div className="md:hidden">

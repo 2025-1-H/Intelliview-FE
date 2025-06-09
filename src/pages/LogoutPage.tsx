@@ -1,50 +1,95 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/auth';
 
 const LogoutPage: React.FC = () => {
   const navigate = useNavigate();
   const [showSignup, setShowSignup] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 로그인 폼
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: ''
+  });
+  
+  // 회원가입 폼
+  const [signupForm, setSignupForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    passwordConfirm: ''
+  });
+  
   const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    // 실제 로그인 로직은 없고 바로 Index 페이지로 이동
-    navigate('/home');
-  };
-
-  const handleKakaoLogin = () => {
-    // 카카오 로그인 로직은 없고 바로 Index 페이지로 이동
-    navigate('/home');
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
+  // 로그인 처리
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 간단한 유효성 검사
-    if (!email || !password || !passwordConfirm) {
-      setError('모든 필드를 입력해주세요.');
-      return;
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await authService.login({
+        email: loginForm.email,
+        password: loginForm.password
+      });
+      
+      // 로그인 성공
+      navigate('/home');
+    } catch (error: any) {
+      setError(error.message || '로그인에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (password !== passwordConfirm) {
+  };
+
+  // 회원가입
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    // 비밀번호 확인
+    if (signupForm.password !== signupForm.passwordConfirm) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
     }
-    
-    // 실제 회원가입 로직은 없고 성공 메시지 후 로그인 화면으로 돌아감
-    alert('회원가입이 완료되었습니다. 로그인해주세요.');
-    setShowSignup(false);
-    setEmail('');
-    setPassword('');
-    setPasswordConfirm('');
-    setError('');
+
+    // 필수 필드 확인
+    if (!signupForm.username || !signupForm.email || !signupForm.password) {
+      setError('모든 필드를 입력해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await authService.signup({
+        username: signupForm.username,
+        email: signupForm.email,
+        password: signupForm.password
+      });
+      
+      alert('회원가입이 완료되었습니다. 로그인해주세요.');
+      
+      setShowSignup(false);
+      setSignupForm({
+        username: '',
+        email: '',
+        password: '',
+        passwordConfirm: ''
+      });
+      setError('');
+    } catch (error: any) {
+      setError(error.message || '회원가입에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Logo Section - 클릭 불가능한 일반 div로 변경 */}
+      {/* Logo Section */}
       <div className="container mx-auto px-4">
         <div className="py-5">
           <div className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2 pointer-events-none">
@@ -54,7 +99,7 @@ const LogoutPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content - 중앙 정렬 */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-md">
           {showSignup ? (
@@ -70,14 +115,29 @@ const LogoutPage: React.FC = () => {
               
               <form onSubmit={handleSignup} className="space-y-4">
                 <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                    사용자명
+                  </label>
+                  <input
+                    id="username"
+                    type="text"
+                    value={signupForm.username}
+                    onChange={(e) => setSignupForm({...signupForm, username: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="사용자명을 입력하세요"
+                    required
+                  />
+                </div>
+                
+                <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                     이메일
                   </label>
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={signupForm.email}
+                    onChange={(e) => setSignupForm({...signupForm, email: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="이메일 주소를 입력하세요"
                     required
@@ -91,8 +151,8 @@ const LogoutPage: React.FC = () => {
                   <input
                     id="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={signupForm.password}
+                    onChange={(e) => setSignupForm({...signupForm, password: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="비밀번호를 입력하세요"
                     required
@@ -106,8 +166,8 @@ const LogoutPage: React.FC = () => {
                   <input
                     id="passwordConfirm"
                     type="password"
-                    value={passwordConfirm}
-                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    value={signupForm.passwordConfirm}
+                    onChange={(e) => setSignupForm({...signupForm, passwordConfirm: e.target.value})}
                     className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="비밀번호를 다시 입력하세요"
                     required
@@ -117,9 +177,10 @@ const LogoutPage: React.FC = () => {
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full bg-primary hover:bg-primary/90 text-white py-2.5 rounded-md font-medium"
+                    disabled={isLoading}
+                    className="w-full bg-primary hover:bg-primary/90 text-white py-2.5 rounded-md font-medium disabled:opacity-50"
                   >
-                    가입하기
+                    {isLoading ? '가입 중...' : '가입하기'}
                   </button>
                 </div>
               </form>
@@ -149,29 +210,44 @@ const LogoutPage: React.FC = () => {
                 자기소개부터 실시간 면접 시뮬레이션까지, Interview Intelliview와 함께 
                 자신감 있게 면접을 준비하세요.
               </p>
+
+              {error && (
+                <div className="bg-red-100 text-red-600 p-3 rounded mb-4 text-sm">
+                  {error}
+                </div>
+              )}
               
-              <div className="space-y-4">
-                <button 
-                  className="btn-bounce w-full bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 px-8 py-3.5 rounded-lg font-medium shadow-sm flex items-center justify-center gap-2"
-                  onClick={handleLogin}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                  </svg>
-                  이메일로 로그인
-                </button>
+              <form onSubmit={handleLogin} className="space-y-4 mb-6">
+                <div>
+                  <input
+                    type="email"
+                    value={loginForm.email}
+                    onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="이메일을 입력하세요"
+                    required
+                  />
+                </div>
                 
-                <button 
-                  className="btn-bounce w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-[#191919] px-8 py-3.5 rounded-lg font-medium shadow-sm flex items-center justify-center gap-2"
-                  onClick={handleKakaoLogin}
+                <div>
+                  <input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="비밀번호를 입력하세요"
+                    required
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="btn-bounce w-full bg-primary hover:bg-primary/90 text-white px-8 py-3.5 rounded-lg font-medium shadow-sm disabled:opacity-50"
                 >
-                  <svg width="20" height="20" viewBox="0 0 20 20">
-                    <path fill="#191919" d="M10 0C4.477 0 0 3.432 0 7.667c0 2.614 1.732 4.932 4.367 6.17.037.221.016.594-.08.847l-.573 2.306c-.04.288.28.566.547.11L8.013 14.4c.64.096 1.32.148 2.012.148 5.522 0 10-3.432 10-7.667C20 3.432 15.522 0 10 0z"/>
-                  </svg>
-                  카카오로 로그인
+                  {isLoading ? '로그인 중...' : '로그인'}
                 </button>
-              </div>
+              </form>
               
               <div className="mt-4 text-sm">
                 <button 
@@ -183,7 +259,7 @@ const LogoutPage: React.FC = () => {
               </div>
               
               <p className="mt-4 text-sm text-muted-foreground">
-                로그인하면 모든 서비스를 무료로 이용하실 수 있습니다.
+                로그인하면 모든 서비스를 이용하실 수 있습니다.
               </p>
             </div>
           )}

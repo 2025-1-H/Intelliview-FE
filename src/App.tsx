@@ -16,6 +16,7 @@ import DailyQuestion from "./pages/DailyQuestion";
 import Header from "./components/ui/layout/Header";
 import Footer from "./components/ui/layout/Footer";
 import AnimatedTransition from "./components/ui/AnimatedTransition";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -44,19 +45,26 @@ function App() {
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* 로그인/회원가입 페이지 (인증 불필요) */}
               <Route path="/" element={<LogoutPage />} />
               
-              {/* 헤더와 푸터가 있는 레이아웃을 적용할 라우트들 */}
-              <Route element={<Layout />}>
+              {/* 보호된 라우트들 (로그인 필요) */}
+              <Route element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
                 <Route path="/home" element={<Index />} />
                 <Route path="/video-feedback" element={<VideoFeedback />} />
                 <Route path="/live-interview" element={<LiveInterview />} />
                 <Route path="/calendar" element={<Calendar />} />
                 <Route path="/daily-question" element={<DailyQuestion />} />
-                <Route path="*" element={<NotFound />} />
                 <Route path="/live-interview/ready" element={<LiveInterviewReady />} />
-                  <Route path="/live-interview/feedback" element={<FeedBackList />} />
+                <Route path="/live-interview/feedback" element={<FeedBackList />} />
               </Route>
+              
+              {/* 404 페이지 */}
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
