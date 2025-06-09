@@ -1,96 +1,63 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isToday } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { apiGet } from '@/services/api';
 
-// 가상의 연습 기록 데이터
-const mockPracticeData = [
-  { date: new Date(2023, 5, 1), questionCount: 3, averageScore: 78 },
-  { date: new Date(2023, 5, 2), questionCount: 5, averageScore: 82 },
-  { date: new Date(2023, 5, 4), questionCount: 2, averageScore: 75 },
-  { date: new Date(2023, 5, 7), questionCount: 4, averageScore: 88 },
-  { date: new Date(2023, 5, 10), questionCount: 1, averageScore: 68 },
-  { date: new Date(2023, 5, 15), questionCount: 6, averageScore: 92 },
-  { date: new Date(2023, 5, 18), questionCount: 3, averageScore: 85 },
-  { date: new Date(2023, 5, 20), questionCount: 2, averageScore: 79 },
-  { date: new Date(2023, 5, 22), questionCount: 4, averageScore: 86 },
-  { date: new Date(2023, 5, 28), questionCount: 5, averageScore: 90 },
-];
+// API 응답 타입 정의
+interface UserDailyQuestionArchive {
+  questionId: number;
+  questionText: string;
+  answer: string;
+  attemptCount: number;
+  createdAt: string;
+}
 
-// 선택한 날짜의 상세 데이터
-const mockDetailData = {
-  '2023-06-01': {
-    date: new Date(2023, 5, 1),
-    questions: [
-      { 
-        question: "자신의 강점과 약점에 대해 말씀해주세요.",
-        answer: "저의 강점은 문제 해결 능력입니다. 복잡한 문제를 분석하고 효율적인 해결책을 찾는 것에 능숙합니다. 약점은 완벽주의 성향이 있어 때로는 세부사항에 너무 집중하여 시간 관리에 어려움을 겪는 경우가 있습니다. 이를 개선하기 위해 우선순위를 명확히 설정하고 시간 관리 도구를 활용하고 있습니다.",
-        score: 85,
-        feedback: "강점과 약점을 균형 있게 제시했으며, 약점에 대한 개선 노력을 언급한 점이 좋습니다. 더 구체적인 사례를 추가하면 설득력이 높아질 것입니다."
-      },
-      { 
-        question: "이전 업무나 프로젝트에서의 성과를 설명해주세요.",
-        answer: "가장 최근 프로젝트에서 팀 리더로서 새로운 고객 관리 시스템을 도입했습니다. 이 과정에서 팀원들과 협력하여 기존 시스템의 문제점을 분석하고, 사용자 요구사항을 수집했습니다. 결과적으로 고객 응대 시간을 30% 단축하고 사용자 만족도를 15% 향상시켰습니다.",
-        score: 78,
-        feedback: "성과를 수치화하여 제시한 점이 좋습니다. 프로젝트 중 발생한 어려움과 이를 어떻게 극복했는지에 대한 설명을 추가하면 좋겠습니다."
-      },
-      { 
-        question: "스트레스 상황에서 어떻게 대처하시나요?",
-        answer: "스트레스 상황에서는 먼저 문제를 객관적으로 파악하고 우선순위를 설정합니다. 호흡 조절과 같은 간단한 마음 조절 기법을 사용하며, 필요한 경우 동료나 상사와 솔직하게 소통하여 도움을 구합니다. 또한 규칙적인 운동을 통해 평소 스트레스 관리에 신경 쓰고 있습니다.",
-        score: 72,
-        feedback: "스트레스 관리에 대한 일반적인 접근법을 잘 설명했습니다. 실제 업무 상황에서의 구체적인 사례를 통해 답변의 신뢰성을 높이는 것이 좋겠습니다."
-      }
-    ],
-    averageScore: 78
-  },
-  '2023-06-15': {
-    date: new Date(2023, 5, 15),
-    questions: [
-      { 
-        question: "본 직무에 지원한 이유가 무엇인가요?",
-        answer: "귀사의 혁신적인 프로젝트와 성장 가능성에 큰 매력을 느꼈습니다. 특히 데이터 분석과 고객 경험 개선에 중점을 둔 귀사의 접근 방식이 제 역량과 관심사와 일치합니다. 또한, 귀사의 협업 문화와 지속적인 학습 환경이 제 경력 발전에 이상적이라고 생각합니다.",
-        score: 92,
-        feedback: "회사와 직무에 대한 이해도가 높고, 자신의 역량과 연결시켜 설명한 점이 우수합니다. 해당 직무에서의 구체적인 기여 방안을 추가하면 더 좋을 것입니다."
-      },
-      { 
-        question: "팀 프로젝트에서 갈등 상황을 해결한 경험이 있나요?",
-        answer: "이전 프로젝트에서 팀원 간 접근 방식 차이로 갈등이 있었습니다. 각자 의견을 명확히 표현할 수 있는 회의를 주선하고, 양측의 관점을 이해하려고 노력했습니다. 결과적으로 두 접근법의 장점을 결합한 하이브리드 방식을 도입하여 더 나은 결과를 얻을 수 있었습니다.",
-        score: 88,
-        feedback: "갈등 상황과 해결 과정을 구체적으로 설명했습니다. STAR 기법을 더 명확히 적용하여 상황-과제-행동-결과를 체계적으로 구성하면 좋겠습니다."
-      },
-      { 
-        question: "향후 5년 후의 자신의 모습은 어떻게 되어 있을 것 같나요?",
-        answer: "5년 후에는 해당 분야의 전문가로 성장하여 팀을 이끌고 있는 모습을 그리고 있습니다. 지속적인 학습과 프로젝트 경험을 통해 기술적 역량을 강화하고, 리더십 기술을 발전시켜 조직의 성장에 기여하고 싶습니다. 또한 관련 자격증 취득과 산업 네트워킹을 통해 전문성을 높일 계획입니다.",
-        score: 95,
-        feedback: "구체적인 목표와 그에 도달하기 위한 계획을 잘 제시했습니다. 회사 내에서의 성장과 기여 방안을 연결시켜 설명한 점이 매우 좋습니다."
-      },
-      { 
-        question: "가장 도전적이었던 업무 경험과 그 결과는 무엇인가요?",
-        answer: "이전 직장에서 레거시 시스템을 새로운 플랫폼으로 마이그레이션하는 프로젝트가 가장 도전적이었습니다. 기술적 어려움과 짧은 기한이 문제였지만, 철저한 계획과 팀원들과의 효율적인 협업으로 기한 내에 성공적으로 완료했습니다. 이 경험을 통해 복잡한 문제 해결 능력과 프로젝트 관리 스킬을 크게 향상시킬 수 있었습니다.",
-        score: 90,
-        feedback: "도전적인 상황과 해결 과정을 명확히 설명했습니다. 구체적인 기술적 어려움과 이를 극복한 방법에 대해 더 자세히 언급하면 기술적 역량을 더 잘 보여줄 수 있을 것입니다."
-      },
-      { 
-        question: "업무에서 우선순위를 어떻게 결정하나요?",
-        answer: "업무 우선순위는 프로젝트의 중요도와 마감일을 기준으로 결정합니다. 먼저 긴급하고 중요한 업무를 최우선으로 하며, 팀 목표와의 연관성, 리소스 가용성, 선행 업무 여부도 고려합니다. 매일 아침 할 일 목록을 검토하고 필요시 팀원 및 상사와 조율하여 우선순위를 조정합니다.",
-        score: 85,
-        feedback: "우선순위 결정 기준을 체계적으로 설명했습니다. 실제 업무 상황에서 적용한 구체적인 사례를 추가하면 더욱 설득력 있는 답변이 될 것입니다."
-      },
-      { 
-        question: "현재 산업 트렌드에 대한 견해를 말씀해주세요.",
-        answer: "현재 산업은 디지털 전환, AI 도입, 데이터 기반 의사결정으로 빠르게 변화하고 있습니다. 특히 코로나19 이후 원격 협업 도구와 클라우드 서비스의 중요성이 증가했으며, 사용자 경험과 개인화 서비스가 경쟁 우위 요소로 부각되고 있습니다. 이러한 변화에 적응하기 위해 꾸준히 새로운 기술을 습득하고 있습니다.",
-        score: 93,
-        feedback: "산업 트렌드에 대한 이해도가 높고 체계적으로 설명했습니다. 이러한 트렌드가 지원 직무와 회사에 어떤 영향을 미치는지, 본인이 어떻게 기여할 수 있는지 연결하면 더 좋은 답변이 될 것입니다."
-      }
-    ],
-    averageScore: 92
-  }
-};
+interface InterviewAnswerArchive {
+  interviewId: number;
+  answer: string;
+  score: number;
+  feedback: string;
+  createdAt: string;
+}
+
+interface DayArchive {
+  date: string; // ISO date string
+  dailyQuestion: UserDailyQuestionArchive | null;
+  interviews: InterviewAnswerArchive[];
+}
+
+interface ArchiveSummary {
+  totalCount: number;
+  averageScore: number | null;
+  maxScore: number | null;
+  days: DayArchive[];
+}
+
+// 화면 표시용 데이터 타입
+interface PracticeData {
+  date: Date;
+  questionCount: number;
+  averageScore: number;
+}
+
+interface DetailData {
+  date: Date;
+  questions: Array<{
+    question: string;
+    answer: string;
+    score: number;
+    feedback: string;
+  }>;
+  averageScore: number;
+}
 
 const Calendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedPractice, setSelectedPractice] = useState<any>(null);
+  const [selectedPractice, setSelectedPractice] = useState<DetailData | null>(null);
+  const [archiveData, setArchiveData] = useState<ArchiveSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // 현재 표시중인 달의 모든 날짜 계산
   const monthStart = startOfMonth(currentDate);
@@ -100,19 +67,144 @@ const Calendar: React.FC = () => {
   
   const dateFormat = "yyyy.MM";
   const days = eachDayOfInterval({ start: startDate, end: endDate });
-  
+
+  // 월별 아카이브 데이터 조회
+  const fetchMonthArchive = async (year: number, month: number) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const response = await apiGet(`/api/v1/archive/${year}/${month}`);
+      setArchiveData(response);
+      
+    } catch (error: any) {
+      console.error('월별 아카이브 조회 실패:', error);
+      setError('데이터를 불러오는데 실패했습니다.');
+      
+      // 에러 발생 시 빈 데이터로 설정
+      setArchiveData({
+        totalCount: 0,
+        averageScore: null,
+        maxScore: null,
+        days: []
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 일별 상세 데이터 조회
+  const fetchDayArchive = async (year: number, month: number, day: number) => {
+    try {
+      const response = await apiGet(`/api/v1/archive/${year}/${month}/${day}`);
+      
+      // API 응답을 화면 표시용 형태로 변환
+      const questions: DetailData['questions'] = [];
+      
+      // 일일 질문 추가
+      if (response.dailyQuestion) {
+        questions.push({
+          question: response.dailyQuestion.questionText,
+          answer: response.dailyQuestion.answer,
+          score: 85, // 일일 질문은 점수가 없으므로 기본값 사용
+          feedback: `${response.dailyQuestion.attemptCount}번째 시도입니다.`
+        });
+      }
+      
+      // 면접 답변들 추가
+      if (response.interviews && response.interviews.length > 0) {
+        response.interviews.forEach((interview: InterviewAnswerArchive) => {
+          questions.push({
+            question: "면접 질문", // API에서 질문 텍스트를 제공하지 않는 경우
+            answer: interview.answer,
+            score: interview.score,
+            feedback: interview.feedback
+          });
+        });
+      }
+      
+      // 평균 점수 계산
+      const scores = questions.map(q => q.score).filter(score => score > 0);
+      const averageScore = scores.length > 0 
+        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
+        : 0;
+      
+      const detailData: DetailData = {
+        date: new Date(response.date),
+        questions,
+        averageScore
+      };
+      
+      setSelectedPractice(detailData);
+      
+    } catch (error: any) {
+      console.error('일별 아카이브 조회 실패:', error);
+      setSelectedPractice(null);
+    }
+  };
+
+  // 날짜가 바뀔 때마다 월별 데이터 조회
+  useEffect(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1; // Date 객체는 0부터 시작
+    fetchMonthArchive(year, month);
+  }, [currentDate]);
+
   // 달력 네비게이션
   const prevMonth = () => {
     setCurrentDate(subMonths(currentDate, 1));
+    setSelectedDate(null);
+    setSelectedPractice(null);
   };
   
   const nextMonth = () => {
     setCurrentDate(addMonths(currentDate, 1));
+    setSelectedDate(null);
+    setSelectedPractice(null);
+  };
+
+  // API 데이터를 화면 표시용으로 변환
+  const getPracticeDataList = (): PracticeData[] => {
+    if (!archiveData || !archiveData.days) return [];
+    
+    return archiveData.days
+      .filter(day => day.dailyQuestion || (day.interviews && day.interviews.length > 0))
+      .map(day => {
+        const date = new Date(day.date);
+        let questionCount = 0;
+        let totalScore = 0;
+        let scoreCount = 0;
+        
+        // 일일 질문 카운트
+        if (day.dailyQuestion) {
+          questionCount += 1;
+        }
+        
+        // 면접 답변 카운트 및 점수 계산
+        if (day.interviews && day.interviews.length > 0) {
+          questionCount += day.interviews.length;
+          day.interviews.forEach(interview => {
+            if (interview.score) {
+              totalScore += interview.score;
+              scoreCount += 1;
+            }
+          });
+        }
+        
+        const averageScore = scoreCount > 0 ? Math.round(totalScore / scoreCount) : 75; // 기본값
+        
+        return {
+          date,
+          questionCount,
+          averageScore
+        };
+      });
   };
   
   // 날짜별 연습 데이터 조회
-  const getPracticeForDate = (date: Date) => {
-    return mockPracticeData.find(practice => 
+  const getPracticeForDate = (date: Date): PracticeData | undefined => {
+    const practiceDataList = getPracticeDataList();
+    return practiceDataList.find(practice => 
       isSameDay(practice.date, date)
     );
   };
@@ -123,12 +215,19 @@ const Calendar: React.FC = () => {
     setSelectedDate(formattedDate);
     
     // 선택한 날짜의 상세 데이터 가져오기
-    if (mockDetailData[formattedDate as keyof typeof mockDetailData]) {
-      setSelectedPractice(mockDetailData[formattedDate as keyof typeof mockDetailData]);
-    } else {
-      setSelectedPractice(null);
-    }
+    const year = day.getFullYear();
+    const month = day.getMonth() + 1;
+    const dayNum = day.getDate();
+    
+    fetchDayArchive(year, month, dayNum);
   };
+
+  // 통계 계산
+  const practiceDataList = getPracticeDataList();
+  const totalPracticeDays = practiceDataList.length;
+  const totalQuestions = practiceDataList.reduce((sum, practice) => sum + practice.questionCount, 0);
+  const averageScore = archiveData?.averageScore ? Math.round(archiveData.averageScore) : 0;
+  const maxScore = archiveData?.maxScore || 0;
   
   return (
     <div className="pt-24 pb-16 min-h-screen">
@@ -140,6 +239,13 @@ const Calendar: React.FC = () => {
             꾸준한 연습이 성공적인 면접의 열쇠입니다.
           </p>
         </div>
+
+        {/* 에러 메시지 */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            {error}
+          </div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 캘린더 */}
@@ -148,6 +254,7 @@ const Calendar: React.FC = () => {
               <button 
                 onClick={prevMonth}
                 className="p-2 rounded-full hover:bg-secondary transition-colors"
+                disabled={isLoading}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -156,11 +263,13 @@ const Calendar: React.FC = () => {
               
               <h2 className="text-xl font-medium">
                 {format(currentDate, dateFormat, { locale: ko })}
+                {isLoading && <span className="ml-2 text-sm text-muted-foreground">로딩중...</span>}
               </h2>
               
               <button 
                 onClick={nextMonth}
                 className="p-2 rounded-full hover:bg-secondary transition-colors"
+                disabled={isLoading}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -193,6 +302,7 @@ const Calendar: React.FC = () => {
                   <button
                     key={i}
                     onClick={() => handleDateClick(day)}
+                    disabled={isLoading}
                     className={`aspect-square rounded-lg flex flex-col items-center justify-center p-1 transition-all ${
                       isSelected 
                         ? 'bg-primary text-white' 
@@ -201,7 +311,7 @@ const Calendar: React.FC = () => {
                           : practice 
                             ? 'bg-white hover:bg-white/80' 
                             : 'hover:bg-secondary'
-                    }`}
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className={`text-sm ${isSelected ? 'font-medium' : ''}`}>
                       {format(day, 'd')}
@@ -239,78 +349,65 @@ const Calendar: React.FC = () => {
           <div className="glass rounded-xl p-6 animate-slide-in" style={{ animationDelay: '100ms' }}>
             <h2 className="text-xl font-medium mb-4">통계 & 요약</h2>
             
-            <div className="space-y-6">
-              <div className="bg-white/60 rounded-lg p-4">
-                <h3 className="font-medium mb-2 text-sm">이번 달 연습 현황</h3>
-                <div className="flex justify-between items-center">
-                  <div className="text-3xl font-bold">{mockPracticeData.length}</div>
-                  <div className="text-sm text-muted-foreground">총 연습일</div>
-                </div>
-                <div className="mt-4 flex justify-between text-sm">
-                  <div>
-                    <div className="font-medium">{mockPracticeData.reduce((acc, curr) => acc + curr.questionCount, 0)}</div>
-                    <div className="text-muted-foreground">총 문제 수</div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="bg-white/60 rounded-lg p-4">
+                  <h3 className="font-medium mb-2 text-sm">이번 달 연습 현황</h3>
+                  <div className="flex justify-between items-center">
+                    <div className="text-3xl font-bold">{totalPracticeDays}</div>
+                    <div className="text-sm text-muted-foreground">총 연습일</div>
                   </div>
-                  <div>
-                    <div className="font-medium">
-                      {Math.round(mockPracticeData.reduce((acc, curr) => acc + curr.averageScore, 0) / mockPracticeData.length)}
+                  <div className="mt-4 flex justify-between text-sm">
+                    <div>
+                      <div className="font-medium">{totalQuestions}</div>
+                      <div className="text-muted-foreground">총 문제 수</div>
                     </div>
-                    <div className="text-muted-foreground">평균 점수</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">
-                      {Math.max(...mockPracticeData.map(p => p.averageScore))}
+                    <div>
+                      <div className="font-medium">-</div>
+                      <div className="text-muted-foreground">평균 점수</div>
                     </div>
-                    <div className="text-muted-foreground">최고 점수</div>
+                    <div>
+                      <div className="font-medium">-</div>
+                      <div className="text-muted-foreground">최고 점수</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-3 text-sm">가장 최근 연습</h3>
-                <div className="space-y-3">
-                  {mockPracticeData.slice(-3).reverse().map((practice, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handleDateClick(practice.date)}
-                      className="w-full text-left bg-white/60 hover:bg-white/80 rounded-lg p-3 transition-all"
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm font-medium">
-                          {format(practice.date, 'MM월 dd일')}
+                
+                <div>
+                  <h3 className="font-medium mb-3 text-sm">가장 최근 연습</h3>
+                  <div className="space-y-3">
+                    {practiceDataList.slice(-3).reverse().map((practice, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleDateClick(practice.date)}
+                        className="w-full text-left bg-white/60 hover:bg-white/80 rounded-lg p-3 transition-all"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm font-medium">
+                            {format(practice.date, 'MM월 dd일')}
+                          </div>
                         </div>
-                        <div className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                          {practice.averageScore}점
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {practice.questionCount}개 문제 연습
                         </div>
+                      </button>
+                    ))}
+                    
+                    {practiceDataList.length === 0 && (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        이번 달 연습 기록이 없습니다.
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {practice.questionCount}개 문제 연습
-                      </div>
-                    </button>
-                  ))}
+                    )}
+                  </div>
                 </div>
+                
+
               </div>
-              
-              <div>
-                <h3 className="font-medium mb-3 text-sm">최근 개선 필요 영역</h3>
-                <div className="bg-white/40 rounded-lg p-4">
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-start gap-2">
-                      <span className="text-amber-500 mt-0.5">!</span>
-                      <span>구체적인 사례 제시 부족</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-amber-500 mt-0.5">!</span>
-                      <span>질문 의도 파악 미흡</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-amber-500 mt-0.5">!</span>
-                      <span>답변 구조화 필요</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
         
@@ -321,24 +418,13 @@ const Calendar: React.FC = () => {
               <h2 className="text-xl font-medium">
                 {format(selectedPractice.date, 'yyyy년 MM월 dd일')} 연습 기록
               </h2>
-              <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                평균 {selectedPractice.averageScore}점
-              </div>
             </div>
             
             <div className="space-y-6">
-              {selectedPractice.questions.map((item: any, index: number) => (
+              {selectedPractice.questions.map((item, index) => (
                 <div key={index} className="bg-white/60 rounded-lg p-5">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="font-medium">{item.question}</h3>
-                    <div className={`text-sm px-2 py-0.5 rounded-full ${
-                      item.score >= 90 ? 'bg-green-100 text-green-800' :
-                      item.score >= 80 ? 'bg-blue-100 text-blue-800' :
-                      item.score >= 70 ? 'bg-amber-100 text-amber-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {item.score}점
-                    </div>
                   </div>
                   
                   <div className="mb-4">
@@ -347,11 +433,17 @@ const Calendar: React.FC = () => {
                   </div>
                   
                   <div>
-                    <div className="text-xs text-muted-foreground mb-1">AI 피드백:</div>
+                    <div className="text-xs text-muted-foreground mb-1">피드백:</div>
                     <p className="text-sm bg-primary/5 rounded-lg p-3">{item.feedback}</p>
                   </div>
                 </div>
               ))}
+              
+              {selectedPractice.questions.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  이 날짜에는 연습 기록이 없습니다.
+                </div>
+              )}
             </div>
           </div>
         )}
