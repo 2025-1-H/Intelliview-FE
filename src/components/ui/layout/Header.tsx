@@ -32,7 +32,8 @@ const Header: React.FC = () => {
     { name: '실시간 면접', path: '/live-interview' },
     { name: '면접 캘린더', path: '/calendar' },
     { name: '오늘의 질문', path: '/daily-question' },
-    { name: '자기소개 피드백', path: '/video-feedback' },
+    // 자기소개 피드백 네비게이션 임시 비활성화
+    // { name: '자기소개 피드백', path: '/video-feedback' },
   ];
 
   return (

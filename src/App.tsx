@@ -55,6 +55,7 @@ function App() {
                 </ProtectedRoute>
               }>
                 <Route path="/home" element={<Index />} />
+                {/* 자기소개 피드백 라우트 임시 비활성화 */}
                 <Route path="/video-feedback" element={<VideoFeedback />} />
                 <Route path="/live-interview" element={<LiveInterview />} />
                 <Route path="/calendar" element={<Calendar />} />
