@@ -11,7 +11,7 @@ export interface SignupRequest {
   githubUrl?: string; // GitHub 주소 추가 (선택사항)
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
 
 class AuthService {
   // 로그인
@@ -154,15 +154,12 @@ class AuthService {
       return false;
     }
   }
-
-  // API 요청용 헤더 가져오기
   getAuthHeaders(): Record<string, string> {
     const token = this.getToken();
     if (!token) return {};
     
     return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`, // ✅ 이것만 남기기
     };
   }
 }

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Play, Mic, MicOff, ListCheck } from "lucide-react";
 import LiveInterviewSetup from "@/pages/LiveInterviewSetup"; // 경로는 실제 파일 위치에 맞게 수정
 import { useNavigate } from "react-router-dom";
-import { apiGet } from "@/services/api.ts";
+import { apiGet, apiPost } from "@/services/api.ts";
 
 type InterviewCategory = "일반" | "직무" | "기술" | "인성";
 
@@ -54,7 +54,7 @@ const LiveInterviewReady: React.FC = () => {
       const data = await res;
 
       console.log("data:", data);
-      setInterviewQuestions(data.questions);
+      setInterviewQuestions(data.questions.map((info: any) => info.question));
     } catch (err) {
       console.error("서버 통신 실패:", err);
       alert("⚠️ 서버 연결이 안되었지만, 테스트용 면접은 계속 진행합니다.");
@@ -109,7 +109,6 @@ const LiveInterviewReady: React.FC = () => {
           },
         ]);
 
-        // setRecordedChunks([]); 
         setRecordedChunks(chunks);
       };
 
@@ -345,17 +344,16 @@ const LiveInterviewReady: React.FC = () => {
     setIsGeneratingFeedback(true); // 로딩 화면 전환
 
     const blob = new Blob(recordedChunks, { type: "video/webm" });
-
-    // base64 변환
+    const formData = new FormData();
+    formData.append("file", blob);
+    
     try {
-      const base64 = await blobToBase64(blob);
-      const uploadRes = await fetch(`http://3.34.40.198/api/v1/interview/${interviewId}/report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: base64 }),
-      });
+      const uploadRes = await apiPost(
+        `/api/v1/interview/${interviewId}/report`,
+        formData
+      );
 
-      const feedbackResult = await uploadRes.json();
+      const feedbackResult = await uploadRes;
       setFeedback(feedbackResult); // 선택
       // navigate("/home"); // or /feedback
     } catch (error) {
