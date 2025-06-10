@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { apiPost } from '@/services/api';
 
 const VideoFeedback: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -89,13 +90,7 @@ const [feedback, setFeedback] = useState<any>(null);
     const base64Str = await blobToBase64(blob);
     const payload = JSON.stringify({ file: base64Str });
 
-    const response = await fetch(`/api/v1/interview/${interviewId}/report`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: payload,
-    });
+    const response = await apiPost(`/api/v1/interview/${interviewId}/report`, payload);
 
     if (!response.ok) throw new Error(`status ${response.status}`);
 
