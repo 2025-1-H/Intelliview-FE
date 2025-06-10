@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiGet, apiPost } from '@/services/api';
 import { authService } from '@/services/auth';
 
-const API_BASE_URL = 'http://test.intelliview.site';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 interface QuestionData {
   questionId: number;

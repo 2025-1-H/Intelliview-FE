@@ -1,4 +1,4 @@
-// src/services/auth.ts (GitHub 주소 추가 버전)
+// src/services/auth.ts (환경변수 사용 버전)
 export interface LoginRequest {
   email: string;
   password: string;
@@ -11,7 +11,7 @@ export interface SignupRequest {
   githubUrl?: string; // GitHub 주소 추가 (선택사항)
 }
 
-const API_BASE_URL = 'http://test.intelliview.site';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 class AuthService {
   // 로그인

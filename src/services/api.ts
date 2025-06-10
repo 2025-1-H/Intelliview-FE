@@ -1,6 +1,6 @@
 import { authService } from './auth';
 
-const API_BASE_URL = 'http://test.intelliview.site';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 // 공통 API 호출 함수
 export const apiCall = async (
