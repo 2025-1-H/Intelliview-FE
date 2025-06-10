@@ -1,8 +1,28 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "interview-intelliview",
+  "description": "AI 면접 준비 플랫폼 - AI와 함께하는 면접 실력 향상",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "keywords": [
+    "면접",
+    "AI",
+    "면접준비",
+    "면접연습",
+    "피드백",
+    "Interview",
+    "React",
+    "TypeScript",
+    "면접 시뮬레이션",
+    "AI 피드백"
+  ],
+  "author": "Interview Intelliview Team",
+  "license": "MIT",
+  "homepage": "https://intelliview.site",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/interview-intelliview"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -73,11 +93,26 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
-    "lovable-tagger": "^1.1.7",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
