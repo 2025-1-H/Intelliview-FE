@@ -28,11 +28,6 @@ export default function InterviewInfo({ onStartInterview, setInterviewId }: Inte
     const data = await res;
     console.log("interviewId:", data); // 인터뷰 ID 저장도 가능
     setInterviewId(data);
-
-    // navigate("/live-interview/feedback", {
-    //   state: { interviewId: data }, 
-    // });
-
   } catch (err) {
     console.error("서버 통~신 실패:", err);
     alert("⚠️ 서버 연결이 안되었지만, 테스트용 면접은 계속 진행합니다.");
