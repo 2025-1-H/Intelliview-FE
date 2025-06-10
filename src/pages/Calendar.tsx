@@ -3,25 +3,33 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths,
 import { ko } from 'date-fns/locale';
 import { apiGet } from '@/services/api';
 
-// API 응답 타입 정의
 interface UserDailyQuestionArchive {
-  questionId: number;
-  questionText: string;
+  id: number;
   answer: string;
   attemptCount: number;
   createdAt: string;
+  question: {
+    id: number;
+    question: string;
+    modelAnswer: string;
+    category: string;
+    difficulty: number;
+  };
 }
 
 interface InterviewAnswerArchive {
-  interviewId: number;
-  answer: string;
+  id: number;
+  videoUrl: string;
   score: number;
-  feedback: string;
+  content: string;
   createdAt: string;
+  interview: {
+    id: number;
+  };
 }
 
 interface DayArchive {
-  date: string; // ISO date string
+  date: string;
   dailyQuestion: UserDailyQuestionArchive | null;
   interviews: InterviewAnswerArchive[];
 }
@@ -33,7 +41,6 @@ interface ArchiveSummary {
   days: DayArchive[];
 }
 
-// 화면 표시용 데이터 타입
 interface PracticeData {
   date: Date;
   questionCount: number;
@@ -42,13 +49,17 @@ interface PracticeData {
 
 interface DetailData {
   date: Date;
-  questions: Array<{
+  dailyQuestion: {
     question: string;
-    answer: string;
+    userAnswer: string;
+    modelAnswer: string;
+    attemptCount: number;
+  } | null;
+  interviews: Array<{
+    content: string;
     score: number;
-    feedback: string;
+    videoUrl: string;
   }>;
-  averageScore: number;
 }
 
 const Calendar: React.FC = () => {
@@ -59,7 +70,6 @@ const Calendar: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 현재 표시중인 달의 모든 날짜 계산
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const startDate = monthStart;
@@ -68,7 +78,6 @@ const Calendar: React.FC = () => {
   const dateFormat = "yyyy.MM";
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
-  // 월별 아카이브 데이터 조회
   const fetchMonthArchive = async (year: number, month: number) => {
     try {
       setIsLoading(true);
@@ -81,7 +90,6 @@ const Calendar: React.FC = () => {
       console.error('월별 아카이브 조회 실패:', error);
       setError('데이터를 불러오는데 실패했습니다.');
       
-      // 에러 발생 시 빈 데이터로 설정
       setArchiveData({
         totalCount: 0,
         averageScore: null,
@@ -93,46 +101,30 @@ const Calendar: React.FC = () => {
     }
   };
 
-  // 일별 상세 데이터 조회
   const fetchDayArchive = async (year: number, month: number, day: number) => {
     try {
       const response = await apiGet(`/api/v1/archive/${year}/${month}/${day}`);
       
-      // API 응답을 화면 표시용 형태로 변환
-      const questions: DetailData['questions'] = [];
-      
-      // 일일 질문 추가
+      let dailyQuestionData = null;
       if (response.dailyQuestion) {
-        questions.push({
-          question: response.dailyQuestion.questionText,
-          answer: response.dailyQuestion.answer,
-          score: 85, // 일일 질문은 점수가 없으므로 기본값 사용
-          feedback: `${response.dailyQuestion.attemptCount}번째 시도입니다.`
-        });
+        dailyQuestionData = {
+          question: response.dailyQuestion.question.question,
+          userAnswer: response.dailyQuestion.answer,
+          modelAnswer: response.dailyQuestion.question.modelAnswer,
+          attemptCount: response.dailyQuestion.attemptCount
+        };
       }
       
-      // 면접 답변들 추가
-      if (response.interviews && response.interviews.length > 0) {
-        response.interviews.forEach((interview: InterviewAnswerArchive) => {
-          questions.push({
-            question: "면접 질문", // API에서 질문 텍스트를 제공하지 않는 경우
-            answer: interview.answer,
-            score: interview.score,
-            feedback: interview.feedback
-          });
-        });
-      }
-      
-      // 평균 점수 계산
-      const scores = questions.map(q => q.score).filter(score => score > 0);
-      const averageScore = scores.length > 0 
-        ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
-        : 0;
+      const interviewData = response.interviews?.map((interview: InterviewAnswerArchive) => ({
+        content: interview.content,
+        score: interview.score,
+        videoUrl: interview.videoUrl
+      })) || [];
       
       const detailData: DetailData = {
         date: new Date(response.date),
-        questions,
-        averageScore
+        dailyQuestion: dailyQuestionData,
+        interviews: interviewData
       };
       
       setSelectedPractice(detailData);
@@ -143,14 +135,12 @@ const Calendar: React.FC = () => {
     }
   };
 
-  // 날짜가 바뀔 때마다 월별 데이터 조회
   useEffect(() => {
     const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1; // Date 객체는 0부터 시작
+    const month = currentDate.getMonth() + 1;
     fetchMonthArchive(year, month);
   }, [currentDate]);
 
-  // 달력 네비게이션
   const prevMonth = () => {
     setCurrentDate(subMonths(currentDate, 1));
     setSelectedDate(null);
@@ -163,7 +153,6 @@ const Calendar: React.FC = () => {
     setSelectedPractice(null);
   };
 
-  // API 데이터를 화면 표시용으로 변환
   const getPracticeDataList = (): PracticeData[] => {
     if (!archiveData || !archiveData.days) return [];
     
@@ -175,12 +164,10 @@ const Calendar: React.FC = () => {
         let totalScore = 0;
         let scoreCount = 0;
         
-        // 일일 질문 카운트
         if (day.dailyQuestion) {
           questionCount += 1;
         }
         
-        // 면접 답변 카운트 및 점수 계산
         if (day.interviews && day.interviews.length > 0) {
           questionCount += day.interviews.length;
           day.interviews.forEach(interview => {
@@ -191,7 +178,7 @@ const Calendar: React.FC = () => {
           });
         }
         
-        const averageScore = scoreCount > 0 ? Math.round(totalScore / scoreCount) : 75; // 기본값
+        const averageScore = scoreCount > 0 ? Math.round(totalScore / scoreCount) : 75;
         
         return {
           date,
@@ -201,7 +188,6 @@ const Calendar: React.FC = () => {
       });
   };
   
-  // 날짜별 연습 데이터 조회
   const getPracticeForDate = (date: Date): PracticeData | undefined => {
     const practiceDataList = getPracticeDataList();
     return practiceDataList.find(practice => 
@@ -209,12 +195,10 @@ const Calendar: React.FC = () => {
     );
   };
   
-  // 날짜 선택 처리
   const handleDateClick = (day: Date) => {
     const formattedDate = format(day, 'yyyy-MM-dd');
     setSelectedDate(formattedDate);
     
-    // 선택한 날짜의 상세 데이터 가져오기
     const year = day.getFullYear();
     const month = day.getMonth() + 1;
     const dayNum = day.getDate();
@@ -222,12 +206,9 @@ const Calendar: React.FC = () => {
     fetchDayArchive(year, month, dayNum);
   };
 
-  // 통계 계산
   const practiceDataList = getPracticeDataList();
   const totalPracticeDays = practiceDataList.length;
   const totalQuestions = practiceDataList.reduce((sum, practice) => sum + practice.questionCount, 0);
-  const averageScore = archiveData?.averageScore ? Math.round(archiveData.averageScore) : 0;
-  const maxScore = archiveData?.maxScore || 0;
   
   return (
     <div className="pt-24 pb-16 min-h-screen">
@@ -240,7 +221,6 @@ const Calendar: React.FC = () => {
           </p>
         </div>
 
-        {/* 에러 메시지 */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
             {error}
@@ -248,7 +228,6 @@ const Calendar: React.FC = () => {
         )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 캘린더 */}
           <div className="lg:col-span-2 glass rounded-xl p-6 animate-slide-in">
             <div className="flex justify-between items-center mb-6">
               <button 
@@ -345,9 +324,8 @@ const Calendar: React.FC = () => {
             </div>
           </div>
           
-          {/* 통계 및 요약 */}
           <div className="glass rounded-xl p-6 animate-slide-in" style={{ animationDelay: '100ms' }}>
-            <h2 className="text-xl font-medium mb-4">통계 & 요약</h2>
+            <h2 className="text-xl font-medium mb-4">통계 및 요약</h2>
             
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -404,14 +382,11 @@ const Calendar: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
-
               </div>
             )}
           </div>
         </div>
         
-        {/* 선택된 날짜의 상세 정보 */}
         {selectedPractice && (
           <div className="glass rounded-xl p-6 mt-8 animate-scale-in">
             <div className="flex justify-between items-center mb-6">
@@ -420,26 +395,80 @@ const Calendar: React.FC = () => {
               </h2>
             </div>
             
-            <div className="space-y-6">
-              {selectedPractice.questions.map((item, index) => (
-                <div key={index} className="bg-white/60 rounded-lg p-5">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-medium">{item.question}</h3>
-                  </div>
+            <div className="space-y-8">
+              {selectedPractice.dailyQuestion && (
+                <div className="bg-white/60 rounded-lg p-6">
+                  <h3 className="font-medium text-lg mb-4 text-primary">일일 질문</h3>
                   
-                  <div className="mb-4">
-                    <div className="text-xs text-muted-foreground mb-1">나의 답변:</div>
-                    <p className="text-sm bg-white/50 rounded-lg p-3">{item.answer}</p>
-                  </div>
-                  
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">피드백:</div>
-                    <p className="text-sm bg-primary/5 rounded-lg p-3">{item.feedback}</p>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2 text-gray-700">질문</h4>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-gray-800 leading-relaxed">
+                          {selectedPractice.dailyQuestion.question}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2 text-blue-700">나의 답변</h4>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-gray-700 leading-relaxed">
+                          {selectedPractice.dailyQuestion.userAnswer}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2 text-green-700">AI 모범답안</h4>
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <p className="text-gray-700 leading-relaxed">
+                          {selectedPractice.dailyQuestion.modelAnswer}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      답변 횟수: {selectedPractice.dailyQuestion.attemptCount}회
+                    </div>
                   </div>
                 </div>
-              ))}
+              )}
               
-              {selectedPractice.questions.length === 0 && (
+              {selectedPractice.interviews && selectedPractice.interviews.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-medium text-lg text-primary">면접 연습</h3>
+                  {selectedPractice.interviews.map((interview, index) => (
+                    <div key={index} className="bg-white/60 rounded-lg p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="font-medium">면접 #{index + 1}</h4>
+                        {interview.score && (
+                          <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                            {interview.score}점
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mb-4">
+                        <h5 className="font-medium mb-2 text-gray-700">피드백</h5>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                            {interview.content}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {interview.videoUrl && (
+                        <div className="text-sm text-muted-foreground">
+                          영상 기록 있음
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {!selectedPractice.dailyQuestion && (!selectedPractice.interviews || selectedPractice.interviews.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
                   이 날짜에는 연습 기록이 없습니다.
                 </div>
