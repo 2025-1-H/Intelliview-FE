@@ -1,3 +1,92 @@
+// import { useLocation } from "react-router-dom";
+// import React, { useEffect, useState } from "react";
+// import { apiGet } from '@/services/api';
+
+
+
+// const FeedBackList = () => {
+//   const location = useLocation();
+//   const interviewId = location.state?.interviewId;
+
+//   const [feedback, setFeedback] = useState(null);
+//   const [loading, setLoading] = useState(true);
+
+//   useEffect(() => {
+//     if (!interviewId) return;
+
+//     const fetchFeedback = async () => {
+//       try {
+//         const data = await apiGet(`/api/v1/interview/${interviewId}/report`);
+//         setFeedback(data);
+//       } catch (err) {
+//         console.error("피드백 로딩 실패:", err);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchFeedback();
+//   }, [interviewId]);
+
+//   if (!interviewId) return <div>인터뷰 ID가 없습니다.</div>;
+//   if (loading) return <div>로딩 중...</div>;
+
+//   return (
+//     <div>
+//       <h1>피드백 결과</h1>
+//       <p>{feedback?.content}</p>
+//       <video src={feedback?.videoUrl} controls />
+//     </div>
+//   );
+// };
+
+// export default FeedBackList;
+
+
+// import React, { useEffect, useState } from "react";
+// import { apiGet } from '@/services/api';
+// import { useLocation } from "react-router-dom";
+
+
+// const FeedBackList = () => {
+//   const [feedback, setFeedback] = useState(null);
+//   const [loading, setLoading] = useState(true);
+//   const location = useLocation();
+//   const interviewId = location.state?.interviewId;
+
+//   useEffect(() => {
+//     if (!interviewId) return;
+
+//     const fetchFeedback = async () => {
+//       try {
+//         const res = await apiGet(`/api/v1/interview/${interviewId}/report`);
+//         const data = await res.json();
+//         setFeedback(data);
+//       } catch (err) {
+//         console.error("피드백 로딩 실패:", err);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchFeedback();
+//   }, []);
+
+//   if (loading) return <div>로딩 중...</div>;
+//   if (!feedback) return <div>피드백 없음</div>;
+
+//   return (
+//     <div>
+//       <h1>피드백 결과</h1>
+//       <p>{feedback.content}</p>
+//       <video src={feedback.videoUrl} controls />
+//     </div>
+//   );
+// };
+
+// export default FeedBackList;
+
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Play, Mic, MicOff, ListCheck } from "lucide-react";
 import LiveInterviewSetup from "@/pages/LiveInterviewSetup"; // 경로는 실제 파일 위치에 맞게 수정
 import { useNavigate } from "react-router-dom";
+import { apiGet } from "@/services/api.ts";
 
 type InterviewCategory = "일반" | "직무" | "기술" | "인성";
 
@@ -49,11 +50,9 @@ const LiveInterviewReady: React.FC = () => {
   const startInterview = async () => {
     console.log(interviewId);
     try {
-      const res = await fetch(`/api/v1/interview/${interviewId}/start`, {
-        method: "GET",
-      });
+      const res = apiGet(`/api/v1/interview/${interviewId}/start`);
+      const data = await res;
 
-      const data = await res.json();
       console.log("data:", data);
       setInterviewQuestions(data.questions);
     } catch (err) {
@@ -110,7 +109,8 @@ const LiveInterviewReady: React.FC = () => {
           },
         ]);
 
-        setRecordedChunks([]); // 초기화
+        // setRecordedChunks([]); 
+        setRecordedChunks(chunks);
       };
 
       recorder.start();

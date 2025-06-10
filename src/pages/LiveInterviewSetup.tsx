@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
+import { apiPost } from "@/services/api.ts";
 
 
 interface InterviewInfoProps {
@@ -19,18 +20,18 @@ export default function InterviewInfo({ onStartInterview, setInterviewId }: Inte
 
   const handleStart = async () => {
   try {
-    const res = await fetch("/api/v1/interview/info", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const res = apiPost("/api/v1/interview/info", {
         occupation: jobType,
         qualification: preference,
-      }),
-    });
-
-    const data = await res.json();
+      });
+    
+    const data = await res;
     console.log("interviewId:", data); // 인터뷰 ID 저장도 가능
     setInterviewId(data);
+
+    // navigate("/live-interview/feedback", {
+    //   state: { interviewId: data }, 
+    // });
 
   } catch (err) {
     console.error("서버 통~신 실패:", err);
