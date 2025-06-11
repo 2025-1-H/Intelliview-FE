@@ -98,6 +98,7 @@ const LiveInterviewReady: React.FC = () => {
 
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: "video/webm" });
+        
         const videoUrl = URL.createObjectURL(blob);
 
         // 예시: 저장
@@ -345,7 +346,8 @@ const LiveInterviewReady: React.FC = () => {
 
     const blob = new Blob(recordedChunks, { type: "video/webm" });
     const formData = new FormData();
-    formData.append("file", blob);
+    formData.append("file", blob, "interview.webm");
+    console.log(blob.type);
     
     try {
       const uploadRes = await apiPost(
