@@ -85,7 +85,8 @@ const DailyQuestion: React.FC = () => {
     try {
       setIsCategoryLoading(true);
       setError(null);
-
+      setSelectedCategory(category);
+      setNeedsCategorySetup(true);
       if (!authService.isLoggedIn()) {
         setError('로그인이 필요합니다. 다시 로그인해주세요.');
         window.location.href = '/';
@@ -115,7 +116,7 @@ const DailyQuestion: React.FC = () => {
       }
       
       setSelectedCategory(category);
-      setNeedsCategorySetup(false);
+      // setNeedsCategorySetup(false);
       
       // 카테고리 설정 후 질문 가져오기
       await fetchTodayQuestion();
@@ -260,7 +261,7 @@ const DailyQuestion: React.FC = () => {
   }
 
   // 카테고리 설정이 필요한 경우
-  if (needsCategorySetup) {
+  if (!needsCategorySetup) {
     return (
       <div className="pt-24 pb-16 min-h-screen">
         <div className="container mx-auto max-w-4xl px-4">
@@ -319,8 +320,8 @@ const DailyQuestion: React.FC = () => {
       </div>
     );
   }
-
-  // 질문 화면
+  else {
+   // 질문 화면
   return (
     <div className="pt-24 pb-16 min-h-screen">
       <div className="container mx-auto max-w-4xl px-4">
@@ -433,7 +434,8 @@ const DailyQuestion: React.FC = () => {
         )}
       </div>
     </div>
-  );
+  ); 
+  }
 };
 
 export default DailyQuestion;
