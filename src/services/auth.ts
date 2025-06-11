@@ -157,7 +157,7 @@ class AuthService {
   getAuthHeaders(): Record<string, string> {
     const token = this.getToken();
     if (!token) return {};
-    
+    console.log(token);
     return {
       'Authorization': `Bearer ${token}`, // ✅ 이것만 남기기
     };

@@ -68,7 +68,7 @@ const LiveInterviewReady: React.FC = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+  const recordedChunksRef = useRef<Blob[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -89,8 +89,9 @@ const LiveInterviewReady: React.FC = () => {
       setMediaRecorder(recorder);
 
       const chunks: Blob[] = [];
-
+console.log("면접 시작 !");
       recorder.ondataavailable = (e) => {
+        console.log("데이터 수신됨:", e.data.size);
         if (e.data.size > 0) {
           chunks.push(e.data);
         }
@@ -98,7 +99,6 @@ const LiveInterviewReady: React.FC = () => {
 
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: "video/webm" });
-        
         const videoUrl = URL.createObjectURL(blob);
 
         // 예시: 저장
@@ -110,7 +110,7 @@ const LiveInterviewReady: React.FC = () => {
           },
         ]);
 
-        setRecordedChunks(chunks);
+        handleInterviewEnd(blob);
       };
 
       recorder.start();
@@ -277,7 +277,7 @@ const LiveInterviewReady: React.FC = () => {
               <Button
                 onClick={
                   currentQuestionIndex === defaultInterviewOption.questions - 1
-                    ? handleInterviewEnd
+                    ? stopRecording
                     : goToNextQuestion
                 }
                 className="bg-blue-500 text-white hover:bg-blue-600 px-8 py-3"
@@ -340,31 +340,27 @@ const LiveInterviewReady: React.FC = () => {
       reader.onerror = reject;
     });
 
-  const handleInterviewEnd = async () => {
-    stopRecording(); // 녹화 중지
-    setIsGeneratingFeedback(true); // 로딩 화면 전환
-
-    const blob = new Blob(recordedChunks, { type: "video/webm" });
-    const formData = new FormData();
-    formData.append("file", blob, "interview.webm");
-    console.log(blob.type);
+    const handleInterviewEnd = async (blob: Blob) => {
+      stopRecording(); // 🔁 필요 시 stop은 여기서도 호출 가능
+      setIsGeneratingFeedback(true);
     
-    try {
-      const uploadRes = await apiPost(
-        `/api/v1/interview/${interviewId}/report`,
-        formData
-      );
-
-      const feedbackResult = await uploadRes;
-      setFeedback(feedbackResult); // 선택
-      // navigate("/home"); // or /feedback
-    } catch (error) {
-      console.error("면접 종료 처리 중 오류:", error);
-      alert("⚠️ 분석 요청 중 오류가 발생했습니다.");
-    } finally {
-      setIsGeneratingFeedback(false);
-    }
-  };
+      console.log("🎥 최종 업로드 크기:", (blob.size / (1024 * 1024)).toFixed(2), "MB");
+    
+      const formData = new FormData();
+      formData.append("file", blob, "interview.webm");
+    
+      try {
+        const res = await apiPost(`/api/v1/interview/${interviewId}/report`, formData);
+        const feedbackResult = await res;
+        setFeedback(feedbackResult);
+      } catch (error) {
+        console.error("면접 종료 처리 중 오류:", error);
+        alert("⚠️ 분석 요청 중 오류가 발생했습니다.");
+      } finally {
+        setIsGeneratingFeedback(false);
+      }
+    };
+    
 
   const renderFeedbackGeneratingView = () => (
     <div className="flex flex-col items-center justify-center h-[60vh] text-center">
