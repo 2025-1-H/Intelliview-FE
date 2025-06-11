@@ -11,6 +11,7 @@ import VideoFeedback from "./pages/VideoFeedback";
 import LiveInterview from "./pages/LiveInterview";
 import LiveInterviewReady from "@/pages/LiveInterviewReady";
 import FeedBackList from "@/pages/FeedBackList";
+import FeedBackDetail from "@/pages/FeedBackDetail";
 import Calendar from "./pages/Calendar";
 import DailyQuestion from "./pages/DailyQuestion";
 import Header from "./components/ui/layout/Header";
@@ -62,6 +63,8 @@ function App() {
                 <Route path="/daily-question" element={<DailyQuestion />} />
                 <Route path="/live-interview/ready" element={<LiveInterviewReady />} />
                 <Route path="/live-interview/feedback" element={<FeedBackList />} />
+                <Route path="/feedback-detail" element={<FeedBackDetail />} />
+
               </Route>
               
               {/* 404 페이지 */}
