@@ -1,16 +1,15 @@
 import { authService } from "./auth";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-
+  import.meta.env.VITE_API_BASE_URL || "http://test.intelliview.site";
 
 // 공통 API 호출 함수
 export const apiCall = async (
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> => {
-  const url = `${endpoint}`;
+  // 전체 URL 구성 - API_BASE_URL + endpoint
+  const url = `${API_BASE_URL}${endpoint}`;
   
   // Content-Type은 조건부로 추가
   const isFormData = options.body instanceof FormData;
@@ -46,7 +45,7 @@ export const apiCall = async (
     headers: defaultHeaders,
   };
 
-  console.log(config.headers);
+  console.log("API 호출:", url, config.headers);
   try {
     const response = await fetch(url, config);
 

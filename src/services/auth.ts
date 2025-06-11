@@ -1,4 +1,3 @@
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -11,13 +10,15 @@ export interface SignupRequest {
   githubUrl?: string; // GitHub 주소 추가 (선택사항)
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+// 환경변수에서 API URL 가져오기 - 기본값을 실제 서버 URL로 변경
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://test.intelliview.site';
 
 class AuthService {
   // 로그인
   async login(credentials: LoginRequest): Promise<string> {
     try {
       console.log('🚀 로그인 요청:', credentials);
+      console.log('🌐 API URL:', API_BASE_URL); // API URL 확인용 로그
       
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
@@ -91,6 +92,7 @@ class AuthService {
   async signup(userData: SignupRequest): Promise<string> {
     try {
       console.log('🚀 회원가입 요청:', userData);
+      console.log('🌐 API URL:', API_BASE_URL); // API URL 확인용 로그
       
       const response = await fetch(`${API_BASE_URL}/api/v1/auth/signup`, {
         method: 'POST',
@@ -154,10 +156,11 @@ class AuthService {
       return false;
     }
   }
+  
   getAuthHeaders(): Record<string, string> {
     const token = this.getToken();
     if (!token) return {};
-    console.log(token);
+    console.log('🔑 인증 헤더 생성');
     return {
       'Authorization': `Bearer ${token}`, // ✅ 이것만 남기기
     };
