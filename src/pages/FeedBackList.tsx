@@ -12,8 +12,7 @@ const FeedBackList: React.FC = () => {
     const fetchList = async () => {
       try {
         const data = await apiGet("/api/v1/interview/report");
-        console.log('피드백 응답 데이터:', data);
-        setFeedbacks(data);
+        setFeedbacks(data.reports); 
       } catch (err) {
         console.error("목록 로딩 실패:", err);
       } finally {
@@ -24,16 +23,22 @@ const FeedBackList: React.FC = () => {
   }, []);
 
   return (
-    <div>
-      <h2>📁 피드백 목록</h2>
+    <div className="max-w-4xl mx-auto py-12 px-4">
+      <h2 className="text-2xl font-bold mb-6">📁 피드백 목록</h2>
       {loading ? (
         <div>로딩 중...</div>
+      ) : feedbacks.length === 0 ? (
+        <div>피드백이 없습니다.</div>
       ) : (
-        feedbacks.map((item) => (
-          <div key={item.id}>
-            <span>{item.date}</span>
-            <span>{item.score}점</span>
+        feedbacks.map((item: any) => (
+          <div
+            key={item.id}
+            className="grid grid-cols-3 items-center gap-4 p-4 border-b"
+          >
+            <span>{new Date(item.date).toLocaleDateString()}</span>
+            <span>{item.occupation}</span>
             <Button
+              size="sm"
               onClick={() =>
                 navigate("/feedback-detail", { state: { interviewId: item.id } })
               }
@@ -48,6 +53,7 @@ const FeedBackList: React.FC = () => {
 };
 
 export default FeedBackList;
+
 
 
 // import { useLocation } from "react-router-dom";
