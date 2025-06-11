@@ -10,21 +10,21 @@ export default defineConfig(({ mode }) => ({
         target: 'http://test.intelliview.site',
         changeOrigin: true,
         secure: false,
-        rewrite: path => path,
+        // rewrite: path => path, // 🔧 이 줄 제거 (불필요)
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
-            console.log('proxy error', err);
+            console.log('🚨 Proxy error:', err);
           });
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            console.log('Sending Request to the Target:', req.method, req.url);
+            console.log('📤 Proxy Request:', req.method, req.url, '→', proxyReq.getHeader('host'));
           });
           proxy.on('proxyRes', (proxyRes, req, _res) => {
-            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+            console.log('📥 Proxy Response:', proxyRes.statusCode, req.url);
           });
         },
       },
     },
-    host: "::",
+    host: "0.0.0.0", // 네트워크 접근 허용
     port: 8080,
   },
   plugins: [

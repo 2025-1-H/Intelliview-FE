@@ -1,14 +1,26 @@
 import { authService } from "./auth";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+// 🔧 개발 환경에서는 프록시 사용, 프로덕션에서는 직접 API 호출
+const isDevelopment = import.meta.env.DEV;
+const API_BASE_URL = isDevelopment 
+  ? '' // 개발 환경: 프록시 사용 (빈 문자열)
+  : (import.meta.env.VITE_API_BASE_URL || 'http://test.intelliview.site'); // 프로덕션: 직접 호출
 
 // 공통 API 호출 함수
 export const apiCall = async (
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // 🔧 프록시 동작 확인을 위한 로깅
+  const url = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : endpoint;
+  
+  console.log('🌐 Environment:', {
+    isDev: isDevelopment,
+    apiBaseUrl: API_BASE_URL,
+    endpoint: endpoint,
+    finalUrl: url,
+    mode: import.meta.env.MODE
+  });
   
   // Content-Type은 조건부로 추가
   const isFormData = options.body instanceof FormData;
@@ -19,7 +31,6 @@ export const apiCall = async (
   if (!isFormData) {
     defaultHeaders["Content-Type"] = "application/json";
   }
-  console.log("dafaultHeaders", defaultHeaders);
   
   // 인증이 필요한 요청일 경우 토큰 추가
   if (authService.isLoggedIn()) {
@@ -44,9 +55,20 @@ export const apiCall = async (
     headers: defaultHeaders,
   };
 
-  console.log(config.headers);
+  console.log('📤 Request config:', {
+    url,
+    method: config.method || 'GET',
+    headers: config.headers
+  });
+
   try {
     const response = await fetch(url, config);
+
+    console.log('📥 Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.url
+    });
 
     // 401 Unauthorized인 경우 로그아웃 처리
     if (response.status === 401) {
@@ -57,7 +79,7 @@ export const apiCall = async (
 
     return response;
   } catch (error) {
-    console.error("API call failed:", error);
+    console.error("❌ API call failed:", error);
     throw error;
   }
 };
